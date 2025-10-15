@@ -7,6 +7,31 @@ import { Menu, X } from "lucide-react"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [walletAddress, setWalletAddress] = useState<string | null>(null)
+
+  const connectWallet = async () => {
+    try {
+      // Check if MetaMask is installed
+      if (typeof window.ethereum !== 'undefined') {
+        // Request account access
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        })
+        
+        if (accounts.length > 0) {
+          // Shorten the address for display
+          const address = accounts[0]
+          const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
+          setWalletAddress(shortened)
+        }
+      } else {
+        alert('Please install MetaMask or another Web3 wallet!')
+      }
+    } catch (error) {
+      console.error('Error connecting wallet:', error)
+      alert('Failed to connect wallet. Please try again.')
+    }
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -37,7 +62,12 @@ export function Header() {
             <a href="#roadmap" className="text-foreground hover:text-primary transition-colors">
               Roadmap
             </a>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Connect Wallet</Button>
+            <Button 
+              onClick={connectWallet}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {walletAddress || 'Connect Wallet'}
+            </Button>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -77,7 +107,12 @@ export function Header() {
             >
               Roadmap
             </a>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">Connect Wallet</Button>
+            <Button 
+              onClick={connectWallet}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {walletAddress || 'Connect Wallet'}
+            </Button>
           </nav>
         )}
       </div>
