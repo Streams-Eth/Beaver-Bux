@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Twitter, Send, Github } from "lucide-react"
+import { Twitter, Github } from "lucide-react"
 
 export function Footer() {
   return (
@@ -82,16 +82,34 @@ export function Footer() {
             <h4 className="font-bold mb-4">Community</h4>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://x.com/beaver_bux"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
               >
                 <Twitter size={20} />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/profile.php?id=61577355935290"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
+                aria-label="Beaver Bux on Facebook"
               >
-                <Send size={20} />
+                {/* Simple Facebook "f" svg */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M22 12C22 6.48 17.52 2 12 2S2 6.48 2 12c0 4.84 3.44 8.84 8 9.8V14.7H7.5v-2.7H10V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6v1.8h2.7l-.4 2.7h-2.3V21.8c4.6-.96 8-4.96 8-9.8z" fill="currentColor" />
+                </svg>
+              </a>
+              <a
+                href="https://discord.gg/rrYRQyYw"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
+                aria-label="Beaver Bux on Discord"
+              >
+                {/* Discord logo svg */}
+                <svg width="20" height="20" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M60.104 4.552A58.768 58.768 0 0047.58.77a41.59 41.59 0 00-2.2 4.48c-6.62-1.01-13.41-1.01-20.02 0a41.487 41.487 0 00-2.21-4.48 58.806 58.806 0 00-12.525 3.782C3.5 18.07-.5 31.06.5 43.943 14.02 50.14 27.36 50.68 40.9 50.5c13.61.18 26.99-.77 39.47-6.557 1.1-13.002-3.9-26.013-19.266-39.391zM23.5 37.2c-3.1 0-5.6-2.8-5.6-6.2 0-3.4 2.5-6.2 5.6-6.2 3.1 0 5.6 2.8 5.6 6.2 0 3.4-2.5 6.2-5.6 6.2zm24 0c-3.1 0-5.6-2.8-5.6-6.2 0-3.4 2.5-6.2 5.6-6.2 3.1 0 5.6 2.8 5.6 6.2 0 3.4-2.5 6.2-5.6 6.2z" fill="currentColor" />
+                </svg>
               </a>
               <a
                 href="#"

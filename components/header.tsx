@@ -50,10 +50,10 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#about" className="text-foreground hover:text-primary transition-colors">
+            <a href="/#about" className="text-foreground hover:text-primary transition-colors">
               About
             </a>
-            <a href="#how-to-buy" className="text-foreground hover:text-primary transition-colors">
+            <a href="/#how-to-buy" className="text-foreground hover:text-primary transition-colors">
               How to Buy
             </a>
             <a href="/tokenomics" className="text-foreground hover:text-primary transition-colors">
@@ -80,14 +80,14 @@ export function Header() {
         {mobileMenuOpen && (
           <nav className="md:hidden mt-4 pb-4 flex flex-col gap-4">
             <a
-              href="#about"
+              href="/#about"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               About
             </a>
             <a
-              href="#how-to-buy"
+              href="/#how-to-buy"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
