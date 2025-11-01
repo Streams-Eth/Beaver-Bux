@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Twitter, Send, Github } from "lucide-react"
+import { Twitter, Github } from "lucide-react"
 
 export function Footer() {
   return (
@@ -82,16 +82,22 @@ export function Footer() {
             <h4 className="font-bold mb-4">Community</h4>
             <div className="flex gap-4">
               <a
-                href="#"
+                href="https://x.com/beaver_bux"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
               >
                 <Twitter size={20} />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/beaver_bux"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
+                aria-label="Beaver Bux on Facebook"
               >
-                <Send size={20} />
+                {/* Simple Facebook "f" svg */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M22 12C22 6.48 17.52 2 12 2S2 6.48 2 12c0 4.84 3.44 8.84 8 9.8V14.7H7.5v-2.7H10V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6v1.8h2.7l-.4 2.7h-2.3V21.8c4.6-.96 8-4.96 8-9.8z" fill="currentColor" />
+                </svg>
               </a>
               <a
                 href="#"
