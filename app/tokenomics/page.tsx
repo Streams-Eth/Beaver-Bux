@@ -1,10 +1,18 @@
 export default function Tokenomics() {
   return (
-    <div className="max-w-4xl mx-auto p-8">
+    <div id="about" className="max-w-4xl mx-auto p-8">
       <h1 className="text-4xl font-bold mb-6">📊 BBUX Tokenomics</h1>
       <p className="mb-6">
         Total Supply: <strong>1,000,000,000 BBUX</strong> (Fixed)
       </p>
+      
+      <section id="how-to-buy" className="mb-8">
+        <h2 className="text-2xl font-semibold mb-2">How to Buy</h2>
+        <p className="text-muted-foreground leading-relaxed">
+          Instructions: Connect your wallet and follow the presale or DEX listing links on the home page. See the
+          "Presale" card below for allocation details.
+        </p>
+      </section>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="border p-4 rounded-xl shadow-sm">
           <h2 className="text-xl font-semibold">🔹 Presale – 10%</h2>
@@ -31,6 +39,11 @@ export default function Tokenomics() {
           <p>Giveaways, contests, meme bounties, and viral marketing</p>
         </div>
       </div>
+
+      <section id="roadmap" className="max-w-4xl mx-auto p-8 mt-8">
+        <h2 className="text-2xl font-semibold mb-2">Roadmap</h2>
+        <p className="text-muted-foreground leading-relaxed">See the full roadmap on the Whitepaper page.</p>
+      </section>
     </div>
   )
 }
