@@ -100,7 +100,7 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href="https://discord.gg/beaver_bux"
+                href="https://discord.gg/rrYRQyYw"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
