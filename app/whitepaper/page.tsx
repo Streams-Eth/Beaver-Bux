@@ -9,7 +9,7 @@ export default function Whitepaper() {
         <div className="max-w-4xl mx-auto p-8 pt-32">
           <h1 className="text-4xl font-bold mb-6">Beaver Bux (BBUX) Whitepaper</h1>
 
-          <section className="mb-8">
+          <section id="about" className="mb-8">
             <h2 className="text-2xl font-semibold mb-2">1. Introduction</h2>
             <p className="text-muted-foreground leading-relaxed">
               Beaver Bux (BBUX) is a community-driven ERC-20 token that merges meme culture with real DeFi utility.
@@ -34,7 +34,7 @@ export default function Whitepaper() {
             </p>
           </section>
 
-          <section className="mb-8">
+          <section id="how-to-buy" className="mb-8">
             <h2 className="text-2xl font-semibold mb-2">4. Utility</h2>
             <ul className="list-disc ml-6 space-y-2 text-muted-foreground">
               <li>Buy goods and services within the ecosystem</li>
@@ -44,7 +44,7 @@ export default function Whitepaper() {
             </ul>
           </section>
 
-          <section className="mb-8">
+          <section id="roadmap" className="mb-8">
             <h2 className="text-2xl font-semibold mb-2">5. Roadmap</h2>
             <ul className="list-disc ml-6 space-y-2 text-muted-foreground">
               <li>
