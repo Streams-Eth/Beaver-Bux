@@ -50,6 +50,7 @@ const PAYPAL_CLIENT_ID = "AS6HlfoJXWFF-xqbhTeLn84IyegiYZwt9jQwfcwpdtaM0xbn2fIliP
 export function PresaleWidget() {
   const [amount, setAmount] = useState("")
   const [isConnected, setIsConnected] = useState(false)
+  const [account, setAccount] = useState<string | null>(null)
   const [currentStage, setCurrentStage] = useState(STAGES[0])
   const [nextStage, setNextStage] = useState(STAGES[1])
   const paypalRef = useRef<HTMLDivElement>(null)
@@ -104,6 +105,10 @@ export function PresaleWidget() {
     if (paypalRef.current && window.paypal && amount && Number.parseFloat(amount) >= MIN_CONTRIBUTION_ETH) {
       const cadAmount = (Number.parseFloat(amount) * ETH_TO_CAD).toFixed(2)
 
+      // create a stable reference id to include in the PayPal order so our webhook
+      // can reliably match the payment to local records. Example: bbux-163...-12345
+      const referenceId = `bbux-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+
       window.paypal
         .Buttons({
           createOrder: (data: any, actions: any) => {
@@ -115,13 +120,22 @@ export function PresaleWidget() {
                     currency_code: "CAD",
                   },
                   description: `${tokensToReceive.toLocaleString()} BBUX Tokens`,
+                  // include custom_id and invoice_id for easier reconciliation
+                  custom_id: referenceId,
+                  invoice_id: referenceId,
                 },
               ],
             })
           },
           onApprove: async (data: any, actions: any) => {
             const order = await actions.order.capture()
-            console.log("[v0] PayPal payment successful:", order)
+            console.log("[v0] PayPal payment successful:", order, { referenceId })
+            // Store a local reference so the client UI can show a matching id if needed
+            try {
+              localStorage.setItem(`bbux_ref_${order.id}`, referenceId)
+            } catch (e) {
+              // ignore storage errors
+            }
             // TODO: Process the payment and call presale contract
             alert(`Payment successful! You will receive ${tokensToReceive.toLocaleString()} BBUX tokens.`)
           },
@@ -275,22 +289,105 @@ export function PresaleWidget() {
         </Tabs>
 
         {/* Action Buttons */}
-        {!isConnected ? (
-          <Button
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
-            onClick={() => setIsConnected(true)}
-          >
-            <Wallet className="mr-2" size={20} />
-            Connect Wallet
-          </Button>
-        ) : (
-          <Button
-            className="w-full bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-            disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
-          >
-            Buy BBUX
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {!isConnected ? (
+            <Button
+              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
+              onClick={async () => {
+                // connect wallet using window.ethereum (MetaMask)
+                if (!(window as any).ethereum) {
+                  alert("No Web3 wallet detected. Please install MetaMask or another Ethereum wallet.")
+                  return
+                }
+
+                try {
+                  const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" })
+                  const acct = accounts && accounts[0]
+                  if (acct) {
+                    setAccount(acct)
+                    setIsConnected(true)
+                  }
+                } catch (e) {
+                  console.error("Wallet connect error:", e)
+                  alert("Failed to connect wallet")
+                }
+              }}
+            >
+              <Wallet className="mr-2" size={20} />
+              Connect Wallet
+            </Button>
+          ) : (
+            <>
+              <Button
+                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
+                disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
+                onClick={async () => {
+                  // buy with connected wallet
+                  if (!(window as any).ethereum) {
+                    alert("No Web3 wallet detected. Please install MetaMask or another Ethereum wallet.")
+                    return
+                  }
+
+                  if (!account) {
+                    alert("Wallet not connected")
+                    return
+                  }
+
+                  const ethAmount = Number.parseFloat(amount || "0")
+                  if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
+                    alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
+                    return
+                  }
+
+                  try {
+                    // convert ETH to wei hex
+                    const wei = BigInt(Math.floor(ethAmount * 1e18))
+                    const value = '0x' + wei.toString(16)
+
+                    const txParams = {
+                      from: account,
+                      to: PRESALE_CONTRACT,
+                      value,
+                    }
+
+                    const txHash = await (window as any).ethereum.request({
+                      method: 'eth_sendTransaction',
+                      params: [txParams],
+                    })
+
+                    console.log('[v0] Payment tx sent', txHash)
+                    alert(`Transaction sent: ${txHash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
+                    // Optionally record tx locally
+                    try {
+                      const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
+                      stored.push({ txHash, account, amount: ethAmount, tokens: tokensToReceive })
+                      localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
+                    } catch (e) {
+                      // ignore
+                    }
+                  } catch (e) {
+                    console.error('Buy error', e)
+                    alert('Failed to send transaction')
+                  }
+                }}
+              >
+                Buy BBUX
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="px-4 py-6 border rounded text-sm"
+                onClick={() => {
+                  // simple disconnect: clear local state
+                  setAccount(null)
+                  setIsConnected(false)
+                }}
+              >
+                Disconnect ({account ? `${account.slice(0,6)}...${account.slice(-4)}` : '—'})
+              </Button>
+            </>
+          )}
+        </div>
 
         <div className="text-xs text-center text-muted-foreground space-y-1">
           <p>
