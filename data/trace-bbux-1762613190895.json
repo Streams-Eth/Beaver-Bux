@@ -1,0 +1,16 @@
+{
+  "token": "0x7056daC6EEe25bd724b6254A661b946c1cC16E6d",
+  "name": "Beaver Bux",
+  "symbol": "BBUX",
+  "decimals": 18,
+  "target": "0x356751e81ebd7234c966f0a755d983f667e43e8a",
+  "latest": 23755224,
+  "summary": {
+    "totalLogs": 0,
+    "sentCount": 0,
+    "receivedCount": 0,
+    "sentAmount": "0",
+    "receivedAmount": "0",
+    "net": "0"
+  }
+}

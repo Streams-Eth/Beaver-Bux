@@ -110,6 +110,23 @@ export async function POST(req: Request) {
       if (!gross && resource.purchase_units && Array.isArray(resource.purchase_units)) {
         const pu = resource.purchase_units[0]
         description = pu?.description || pu?.reference_id || description
+        // Attempt to extract buyer wallet if provided in custom_id in format: <referenceId>|<wallet>
+        try {
+          const custom = pu?.custom_id || pu?.invoice_id || null
+          if (custom && typeof custom === 'string' && custom.includes('|')) {
+            const parts = custom.split('|')
+            record.claim_reference = parts[0]
+            // simple validation of wallet
+            const possible = parts[1]
+            if (/^0x[a-fA-F0-9]{40}$/.test(possible)) {
+              record.buyer_wallet = possible
+            }
+          } else if (custom) {
+            record.claim_reference = String(custom)
+          }
+        } catch (e) {
+          // ignore
+        }
         if (pu?.payments?.captures && Array.isArray(pu.payments.captures) && pu.payments.captures[0]) {
           const c = pu.payments.captures[0]
           gross = c.amount?.value || gross
@@ -129,11 +146,11 @@ export async function POST(req: Request) {
         if (m) tokens = parseFloat(m[1].replace(/,/g, ""))
       }
 
-      record.transaction_id = txId
-      record.gross = gross !== null ? parseFloat(String(gross)) : null
-      record.currency = currency
-      record.description = description
-      record.tokens = tokens
+  record.transaction_id = txId
+  record.gross = gross !== null ? parseFloat(String(gross)) : null
+  record.currency = currency
+  record.description = description
+  record.tokens = tokens
     } catch (e) {
       // Non-fatal; we'll still store the raw event
     }
@@ -157,6 +174,8 @@ export async function POST(req: Request) {
           currency: record.currency || null,
           description: record.description || null,
           tokens: record.tokens || null,
+          buyer_wallet: record.buyer_wallet || null,
+          claim_reference: record.claim_reference || null,
           raw_event: record.raw_event || null,
         }
 
@@ -187,6 +206,24 @@ export async function POST(req: Request) {
         arr.push(record)
         await fs.writeFile(filePath, JSON.stringify(arr, null, 2), "utf8")
         record.saved = true
+      }
+
+      // If buyer_wallet is present and server has admin delivery keys, attempt auto-delivery
+      try {
+        if (record.buyer_wallet && record.transaction_id && process.env.ETHEREUM_RPC_URL && process.env.ADMIN_PRIVATE_KEY) {
+          const base = process.env.APP_ORIGIN || ''
+          const url = base ? `${base}/api/admin/deliver` : `/api/admin/deliver`
+          // call internal deliver endpoint
+          const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transaction_id: record.transaction_id, to: record.buyer_wallet }),
+          })
+          const jr = await resp.json().catch(() => null)
+          console.log('Auto-deliver result', jr)
+        }
+      } catch (e) {
+        console.error('Auto-deliver failed', e)
       }
 
       return new Response(JSON.stringify({ ok: true, verification: verifyJson, saved: record.saved }), { status: 200 })

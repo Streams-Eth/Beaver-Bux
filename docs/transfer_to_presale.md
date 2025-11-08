@@ -12,12 +12,12 @@ Requirements
 Script
 Use the provided script `scripts/transfer_to_presale.js`.
 
-Example (transfer 300,000,000 tokens):
+Example (transfer 30,000,000 tokens):
 
 ```bash
 export ETHEREUM_RPC_URL="https://polygon-mainnet.infura.io/v3/YOUR_KEY"
 export ADMIN_PRIVATE_KEY="0xYOUR_PRIVATE_KEY"
-node scripts/transfer_to_presale.js 0x7056daC6EEe25bd724b6254A661b946c1cC16E6d 0xF479063E290E85e1470a11821128392F6063790B 300000000
+node scripts/transfer_to_presale.js 0x7056daC6EEe25bd724b6254A661b946c1cC16E6d 0xF479063E290E85e1470a11821128392F6063790B 30000000
 ```
 
 Notes

@@ -36,7 +36,8 @@ export async function POST(req: Request, { params }: any) {
     const token = params.token
     const body = await req.json()
     const wallet = body?.wallet
-    if (!token || !wallet) return new Response(JSON.stringify({ ok: false, error: 'Missing token or wallet' }), { status: 400 })
+    const signature = body?.signature
+    if (!token || !wallet || !signature) return new Response(JSON.stringify({ ok: false, error: 'Missing token, wallet or signature' }), { status: 400 })
 
     const supabaseUrl = process.env.SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -58,15 +59,38 @@ export async function POST(req: Request, { params }: any) {
       payment = arr.find((p: any) => p.claim_token === token)
       if (!payment) return new Response(JSON.stringify({ ok: false, error: 'Token not found' }), { status: 404 })
 
-      // update local file: set claimed wallet
-      const idx = arr.findIndex((p: any) => p.claim_token === token)
-      arr[idx].claimed = true
-      arr[idx].claimed_wallet = wallet
-      await fs.writeFile(filePath, JSON.stringify(arr, null, 2), 'utf8')
+      // Check expiry and whether already claimed
+      if (payment.claimed) return new Response(JSON.stringify({ ok: false, error: 'Token already claimed' }), { status: 400 })
+      if (payment.claim_expires) {
+        const exp = new Date(payment.claim_expires).getTime()
+        if (Date.now() > exp) return new Response(JSON.stringify({ ok: false, error: 'Claim token expired' }), { status: 400 })
+      }
+
+      // Verify signature: buyer must sign the canonical claim message
+      try {
+        const msg = `I claim transaction ${payment.transaction_id} for ${payment.tokens} BBUX (claim: ${token})`
+        const recovered = ethers.utils.verifyMessage(msg, signature)
+        const normalized = ethers.utils.getAddress(recovered)
+        const submitted = ethers.utils.getAddress(wallet)
+        if (normalized !== submitted) {
+          return new Response(JSON.stringify({ ok: false, error: 'Signature does not match wallet' }), { status: 400 })
+        }
+      } catch (e) {
+        console.error('Signature verification error', e)
+        return new Response(JSON.stringify({ ok: false, error: 'Invalid signature' }), { status: 400 })
+      }
+
+  // update local file: set claimed wallet
+  const idx = arr.findIndex((p: any) => p.claim_token === token)
+  arr[idx].claimed = true
+  arr[idx].claimed_wallet = wallet
+  arr[idx].claimed_at = new Date().toISOString()
+  arr[idx].claim_signature = signature
+  await fs.writeFile(filePath, JSON.stringify(arr, null, 2), 'utf8')
     } else {
       // update supabase row
       const supabase = createClient(supabaseUrl!, supabaseKey!)
-      await supabase.from('payments').update({ claimed: true, claimed_wallet: wallet }).eq('claim_token', token)
+  await supabase.from('payments').update({ claimed: true, claimed_wallet: wallet, claimed_at: new Date().toISOString(), claim_signature: signature }).eq('claim_token', token)
     }
 
     // Try to auto-deliver if admin env present: call internal deliver logic

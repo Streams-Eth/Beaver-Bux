@@ -60,15 +60,24 @@ export function HowToBuySection() {
 
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground">
-            Need help? Join our{" "}
+            Need help? Join our {" "}
             <a href="#" className="text-primary hover:underline font-semibold">
               Telegram community
             </a>{" "}
-            or check out our{" "}
+            or check out our {" "}
             <a href="#" className="text-primary hover:underline font-semibold">
               detailed guide
             </a>
           </p>
+
+          <div className="mt-4">
+            <a
+              href="/claim/bbux-claim-sara-0003"
+              className="inline-block px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Claim your tokens
+            </a>
+          </div>
         </div>
       </div>
     </section>

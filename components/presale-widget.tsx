@@ -102,12 +102,24 @@ export function PresaleWidget() {
   const cadEquivalent = amount ? Number.parseFloat(amount) * ETH_TO_CAD : 0
 
   useEffect(() => {
-    if (paypalRef.current && window.paypal && amount && Number.parseFloat(amount) >= MIN_CONTRIBUTION_ETH) {
+    // Require wallet connect for PayPal purchases: buyer must connect a wallet first
+    if (
+      paypalRef.current &&
+      window.paypal &&
+      amount &&
+      Number.parseFloat(amount) >= MIN_CONTRIBUTION_ETH &&
+      isConnected &&
+      account
+    ) {
       const cadAmount = (Number.parseFloat(amount) * ETH_TO_CAD).toFixed(2)
 
       // create a stable reference id to include in the PayPal order so our webhook
       // can reliably match the payment to local records. Example: bbux-163...-12345
-      const referenceId = `bbux-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+  const referenceId = `bbux-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+
+  // Include connected wallet address in the PayPal order custom_id so the webhook can auto-deliver
+  // Format: <referenceId>|<wallet>
+  const customId = `${referenceId}|${account}`
 
       window.paypal
         .Buttons({
@@ -121,7 +133,7 @@ export function PresaleWidget() {
                   },
                   description: `${tokensToReceive.toLocaleString()} BBUX Tokens`,
                   // include custom_id and invoice_id for easier reconciliation
-                  custom_id: referenceId,
+                  custom_id: customId,
                   invoice_id: referenceId,
                 },
               ],
@@ -152,7 +164,7 @@ export function PresaleWidget() {
         })
         .render(paypalRef.current)
     }
-  }, [amount, tokensToReceive])
+  }, [amount, tokensToReceive, isConnected, account])
 
   return (
     <Card className="w-full max-w-md bg-card border-2 border-primary/20 shadow-xl">
@@ -279,7 +291,13 @@ export function PresaleWidget() {
             </div>
 
             {amount && Number.parseFloat(amount) >= MIN_CONTRIBUTION_ETH ? (
-              <div ref={paypalRef} className="w-full" />
+              isConnected && account ? (
+                <div ref={paypalRef} className="w-full" />
+              ) : (
+                <div className="bg-muted rounded-lg p-4 text-sm text-center text-muted-foreground">
+                  Connect your wallet to enable PayPal checkout
+                </div>
+              )
             ) : (
               <div className="bg-muted rounded-lg p-4 text-sm text-center text-muted-foreground">
                 Enter an amount to see PayPal payment options

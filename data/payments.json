@@ -22,8 +22,8 @@
     "receipt_id": "1603586948223554",
     "from_email": "sara3.aw@yahoo.com",
     "csv_item_title": "1,904.762 BBUX Tokens",
-  "claim_token": "bbux-claim-9f3b2a7c-0001",
-  "claim_expires": "2025-11-10T00:00:00.000Z",
+  "claim_token": "bbux-claim-sara-0003",
+  "claim_expires": "2025-11-11T14:00:00.000Z",
     "status": "completed",
     "notes": "Recorded from merchant PayPal notification. Tokens not yet delivered on-chain; no wallet address provided."
   }
@@ -52,8 +52,8 @@
     "receipt_id": "2648197704090198",
     "from_email": "sara3.aw@yahoo.com",
     "csv_item_title": "100,000 BBUX Tokens",
-    "claim_token": "bbux-claim-1a2b3c4d-0002",
-    "claim_expires": "2025-11-10T00:00:00.000Z",
+  "claim_token": "bbux-claim-sara-0003",
+  "claim_expires": "2025-11-11T14:00:00.000Z",
     "status": "completed",
     "notes": "Imported from PayPal CSV."
   }
