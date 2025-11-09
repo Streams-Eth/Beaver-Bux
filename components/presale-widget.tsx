@@ -83,6 +83,21 @@ export function PresaleWidget() {
   }, [])
 
   useEffect(() => {
+    // Auto-save ?claim=bbux-claim-... into localStorage so PayPal orders include it
+    try {
+      const qp = new URLSearchParams(window.location.search)
+      const q = qp.get('claim')
+      if (q) {
+        try {
+          localStorage.setItem('bbux_claim_token', q)
+        } catch (e) {
+          // ignore storage errors
+        }
+      }
+    } catch (e) {
+      // ignore URL parsing errors (server render etc.)
+    }
+
     const now = new Date()
     const active = STAGES.find((stage) => now >= stage.start && now <= stage.end)
     if (active) {

@@ -135,6 +135,29 @@ export async function POST(req: Request) {
         }
       }
 
+      // Fallback: some events (capture style) put custom_id / invoice_id at resource level
+      // e.g. resource.custom_id or resource.invoice_id. Use these as a fallback so
+      // payments created with custom_id at the top-level are still matched to claims.
+      try {
+        if (!record.claim_reference && resource) {
+          const topCustom = resource.custom_id || resource.invoice_id || null
+          if (topCustom && typeof topCustom === 'string') {
+            if (topCustom.includes('|')) {
+              const parts = topCustom.split('|')
+              record.claim_reference = parts[0]
+              const possible = parts[1]
+              if (/^0x[a-fA-F0-9]{40}$/.test(possible)) {
+                record.buyer_wallet = possible
+              }
+            } else {
+              record.claim_reference = String(topCustom)
+            }
+          }
+        }
+      } catch (e) {
+        // ignore fallback parsing errors
+      }
+
       // Fallbacks
       description = description || (resource.purchase_units && resource.purchase_units[0] && resource.purchase_units[0].description) || event.summary || null
       txId = txId || resource.id || event.id || null
