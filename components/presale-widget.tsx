@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { ethers } from 'ethers'
+import { useAccount, useConnect, useDisconnect, useSigner } from 'wagmi'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -51,6 +53,10 @@ export function PresaleWidget() {
   const [amount, setAmount] = useState("")
   const [isConnected, setIsConnected] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
+  const { address, isConnected: wagmiIsConnected } = useAccount()
+  const { connect, connectors } = useConnect()
+  const { disconnect } = useDisconnect()
+  const { data: signer } = useSigner()
   const [currentStage, setCurrentStage] = useState(STAGES[0])
   const [nextStage, setNextStage] = useState(STAGES[1])
   const paypalRef = useRef<HTMLDivElement>(null)
@@ -83,6 +89,15 @@ export function PresaleWidget() {
   }, [])
 
   useEffect(() => {
+    // sync wagmi account state to local state
+    if (wagmiIsConnected && address) {
+      setAccount(address)
+      setIsConnected(true)
+    } else {
+      setAccount(null)
+      setIsConnected(false)
+    }
+
     // Auto-save ?claim=bbux-claim-... into localStorage so PayPal orders include it
     try {
       const qp = new URLSearchParams(window.location.search)
@@ -347,22 +362,14 @@ export function PresaleWidget() {
             <Button
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
               onClick={async () => {
-                // connect wallet using window.ethereum (MetaMask)
-                if (!(window as any).ethereum) {
-                  alert("No Web3 wallet detected. Please install MetaMask or another Ethereum wallet.")
-                  return
-                }
-
                 try {
-                  const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" })
-                  const acct = accounts && accounts[0]
-                  if (acct) {
-                    setAccount(acct)
-                    setIsConnected(true)
-                  }
+                  // prefer injected connector if available, otherwise open first connector (WalletConnect)
+                  const injected = connectors.find((c: any) => c.id === 'injected')
+                  const connectorToUse = injected || connectors[0]
+                  await connect({ connector: connectorToUse })
                 } catch (e) {
-                  console.error("Wallet connect error:", e)
-                  alert("Failed to connect wallet")
+                  console.error('Wallet connect error:', e)
+                  alert('Failed to connect wallet')
                 }
               }}
             >
@@ -375,45 +382,27 @@ export function PresaleWidget() {
                 className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
                 disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
                 onClick={async () => {
-                  // buy with connected wallet
-                  if (!(window as any).ethereum) {
-                    alert("No Web3 wallet detected. Please install MetaMask or another Ethereum wallet.")
+                  if (!signer) {
+                    alert('Wallet not connected')
                     return
                   }
 
-                  if (!account) {
-                    alert("Wallet not connected")
-                    return
-                  }
-
-                  const ethAmount = Number.parseFloat(amount || "0")
+                  const ethAmount = Number.parseFloat(amount || '0')
                   if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
                     alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
                     return
                   }
 
                   try {
-                    // convert ETH to wei hex
-                    const wei = BigInt(Math.floor(ethAmount * 1e18))
-                    const value = '0x' + wei.toString(16)
-
-                    const txParams = {
-                      from: account,
+                    const tx = await signer.sendTransaction({
                       to: PRESALE_CONTRACT,
-                      value,
-                    }
-
-                    const txHash = await (window as any).ethereum.request({
-                      method: 'eth_sendTransaction',
-                      params: [txParams],
+                      value: ethers.utils.parseEther(String(ethAmount)),
                     })
-
-                    console.log('[v0] Payment tx sent', txHash)
-                    alert(`Transaction sent: ${txHash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
-                    // Optionally record tx locally
+                    console.log('[v0] Payment tx sent', tx.hash)
+                    alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
                     try {
                       const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
-                      stored.push({ txHash, account, amount: ethAmount, tokens: tokensToReceive })
+                      stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive })
                       localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
                     } catch (e) {
                       // ignore
