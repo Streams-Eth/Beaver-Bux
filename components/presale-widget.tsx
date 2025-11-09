@@ -116,10 +116,30 @@ export function PresaleWidget() {
       // create a stable reference id to include in the PayPal order so our webhook
       // can reliably match the payment to local records. Example: bbux-163...-12345
   const referenceId = `bbux-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+      // Prefer an existing claim token (if provided via localStorage or URL param).
+      // This lets admins generate a claim token (e.g. bbux-claim-sara-0003) and the
+      // PayPal order will include that token so the webhook can match it directly.
+      // Format: <claimToken>|<wallet>  (fallback to <referenceId>|<wallet>)
+      let claimToken: string | null = null
+      try {
+        claimToken = localStorage.getItem('bbux_claim_token')
+      } catch (e) {
+        claimToken = null
+      }
+      // also allow `claim` query param to prefill claimToken (useful for emailed claim links)
+      try {
+        if (!claimToken) {
+          const qp = new URLSearchParams(window.location.search)
+          const q = qp.get('claim')
+          if (q) claimToken = q
+        }
+      } catch (e) {
+        // ignore
+      }
 
-  // Include connected wallet address in the PayPal order custom_id so the webhook can auto-deliver
-  // Format: <referenceId>|<wallet>
-  const customId = `${referenceId}|${account}`
+      // Include connected wallet address in the PayPal order custom_id so the webhook can auto-deliver
+      // Use claimToken when present, otherwise fall back to generated referenceId
+      const customId = `${claimToken || referenceId}|${account}`
 
       window.paypal
         .Buttons({
