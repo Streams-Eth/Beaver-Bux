@@ -4,8 +4,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
-import dynamic from "next/dynamic"
-const Web3Provider = dynamic(() => import("@/components/web3-provider").then(m => m.Web3Provider), { ssr: false })
+import { Providers } from "./providers"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -30,7 +29,7 @@ export default function RootLayout({
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
-          <Web3Provider>{children}</Web3Provider>
+          <Providers>{children}</Providers>
         </Suspense>
         <Analytics />
       </body>
