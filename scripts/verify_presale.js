@@ -10,7 +10,7 @@ const provider = new ethers.providers.JsonRpcProvider(RPC);
 
 // normalize / checksum addresses to avoid "bad address checksum" errors
 const tokenAddress = ethers.utils.getAddress('0x463ac39bE0acBF27BfBB7F7bF00829e708E2c5d1');
-const presaleAddress = ethers.utils.getAddress('0xF479063E290E85e1470a11821128392F6063790B');
+const presaleAddress = ethers.utils.getAddress('0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564');
 const fundingTx = '0x263bc9870a3263c97096b564794d9069c87172bc935b812d20407affd446e508';
 
 const ERC20_ABI = [

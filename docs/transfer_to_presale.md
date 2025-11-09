@@ -15,9 +15,9 @@ Use the provided script `scripts/transfer_to_presale.js`.
 Example (transfer 30,000,000 tokens):
 
 ```bash
-export ETHEREUM_RPC_URL="https://polygon-mainnet.infura.io/v3/YOUR_KEY"
+export ETHEREUM_RPC_URL="https://mainnet.infura.io/v3/YOUR_KEY"
 export ADMIN_PRIVATE_KEY="0xYOUR_PRIVATE_KEY"
-node scripts/transfer_to_presale.js 0x7056daC6EEe25bd724b6254A661b946c1cC16E6d 0xF479063E290E85e1470a11821128392F6063790B 30000000
+node scripts/transfer_to_presale.js 0xa7372d8409805D0D3F0Eb774B9bC8b7975340682 0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564 100000000
 ```
 
 Notes

@@ -7,8 +7,8 @@ async function main(){
     process.exit(1);
   }
   const provider = new ethers.providers.JsonRpcProvider(RPC);
-  const token = '0x7056daC6EEe25bd724b6254A661b946c1cC16E6d';
-  const presale = '0xF479063E290E85e1470a11821128392F6063790B';
+  const token = '0xa7372d8409805D0D3F0Eb774B9bC8b7975340682';
+  const presale = '0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564';
   const abi = [
     'function balanceOf(address) view returns (uint256)',
     'function decimals() view returns (uint8)',

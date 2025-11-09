@@ -8,7 +8,7 @@ const { ethers } = require('ethers')
 // Example:
 // node scripts/generate_safe_calldata.js 0xYourAddress --claim=bbux-claim-sara-0003
 
-const DEFAULT_TOKEN = '0x7056daC6EEe25bd724b6254A661b946c1cC16E6d'
+const DEFAULT_TOKEN = '0xa7372d8409805D0D3F0Eb774B9bC8b7975340682'
 const DEFAULT_DECIMALS = 18
 
 function usage() {

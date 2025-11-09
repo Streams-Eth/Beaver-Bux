@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Wallet } from "lucide-react"
 
-const PRESALE_CONTRACT = "0xF479063E290E85e1470a11821128392F6063790B"
+const PRESALE_CONTRACT = "0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564"
 const MIN_CONTRIBUTION_ETH = 0.0005
 const MAX_CONTRIBUTION_ETH = 0.25
 const TOTAL_TOKENS_FOR_SALE = 100_000_000

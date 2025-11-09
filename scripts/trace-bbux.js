@@ -10,7 +10,7 @@ const fs = require('fs');
 //   TOKEN (token contract address) - defaults to the provided BBUX contract
 //   TARGET (address to summarize) - defaults to the sender address provided
 
-const DEFAULT_TOKEN = '0x7056daC6EEe25bd724b6254A661b946c1cC16E6d';
+const DEFAULT_TOKEN = '0xa7372d8409805D0D3F0Eb774B9bC8b7975340682';
 const DEFAULT_TARGET = '0x356751e81EBD7234C966f0a755d983F667e43e8A';
 
 async function main() {

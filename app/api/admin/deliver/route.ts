@@ -20,7 +20,7 @@ import { ethers } from "ethers"
  * - Updates the payment record (delivered=true, delivery_tx_hash)
  */
 
-const PRESALE_CONTRACT = "0xF479063E290E85e1470a11821128392F6063790B"
+const PRESALE_CONTRACT = "0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564"
 
 export async function POST(req: Request) {
   try {
