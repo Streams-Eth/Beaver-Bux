@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { ethers } from 'ethers'
-import { useAccount, useConnect, useDisconnect, useSigner } from 'wagmi'
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -56,7 +56,6 @@ export function PresaleWidget() {
   const { address, isConnected: wagmiIsConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
-  const { data: signer } = useSigner()
   const [currentStage, setCurrentStage] = useState(STAGES[0])
   const [nextStage, setNextStage] = useState(STAGES[1])
   const paypalRef = useRef<HTMLDivElement>(null)
@@ -382,24 +381,27 @@ export function PresaleWidget() {
                 className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
                 disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
                 onClick={async () => {
-                  if (!signer) {
-                    alert('Wallet not connected')
-                    return
-                  }
+                    // Use injected provider's signer via ethers (window.ethereum) instead of wagmi's useSigner
+                    if (typeof window === 'undefined' || !(window as any).ethereum) {
+                      alert('Wallet not connected')
+                      return
+                    }
 
-                  const ethAmount = Number.parseFloat(amount || '0')
-                  if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
-                    alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
-                    return
-                  }
+                    const ethAmount = Number.parseFloat(amount || '0')
+                    if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
+                      alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
+                      return
+                    }
 
-                  try {
-                    const tx = await signer.sendTransaction({
-                      to: PRESALE_CONTRACT,
-                      value: ethers.utils.parseEther(String(ethAmount)),
-                    })
-                    console.log('[v0] Payment tx sent', tx.hash)
-                    alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
+                    try {
+                      const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+                      const signer = provider.getSigner()
+                      const tx = await signer.sendTransaction({
+                        to: PRESALE_CONTRACT,
+                        value: ethers.utils.parseEther(String(ethAmount)),
+                      })
+                      console.log('[v0] Payment tx sent', tx.hash)
+                      alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
                     try {
                       const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
                       stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive })
