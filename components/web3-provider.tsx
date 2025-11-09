@@ -1,29 +1,19 @@
 "use client"
 
 import React from "react"
-import { configureChains, createClient, WagmiConfig } from "wagmi"
-import { mainnet } from "wagmi/chains"
-import { w3mProvider, w3mConnectors, EthereumClient } from "@web3modal/ethereum"
-import { Web3Modal } from "@web3modal/react"
+import { WagmiConfig } from "wagmi"
+import { createConfig, injected } from "@wagmi/core"
 
-const chains = [mainnet]
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || ""
+// Minimal client-only Wagmi provider using the injected connector.
+// This avoids pulling in @web3modal/* packages which have incompatible
+// peer dependency expectations with the installed wagmi/@wagmi/core versions
+// and caused build-time resolution errors on Netlify.
 
-const { provider } = configureChains(chains, [w3mProvider({ projectId })])
-
-const wagmiClient = createClient({
+const config = createConfig({
   autoConnect: true,
-  connectors: w3mConnectors({ projectId, chains }),
-  provider,
+  connectors: [injected()],
 })
 
-const ethereumClient = new EthereumClient(wagmiClient, chains)
-
 export function Web3Provider({ children }: { children: React.ReactNode }) {
-  return (
-    <WagmiConfig client={wagmiClient}>
-      {children}
-      <Web3Modal projectId={projectId} ethereumClient={ethereumClient} />
-    </WagmiConfig>
-  )
+  return <WagmiConfig config={config}>{children}</WagmiConfig>
 }
