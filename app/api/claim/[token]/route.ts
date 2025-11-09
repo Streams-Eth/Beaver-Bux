@@ -21,8 +21,30 @@ export async function GET(req: Request, { params }: any) {
     const fs = await import('fs/promises')
     const path = await import('path')
     const filePath = path.join(process.cwd(), 'data', 'payments.json')
-    const raw = await fs.readFile(filePath, 'utf8')
-    const arr = JSON.parse(raw)
+    let arr: any[] = []
+    try {
+      const raw = await fs.readFile(filePath, 'utf8')
+      arr = JSON.parse(raw)
+    } catch (e: any) {
+      // If the file isn't present in the serverless bundle (common on some hosts),
+      // try fetching the static copy from the public folder served by the site.
+      // This requires that `public/data/payments.json` exists and APP_ORIGIN is set.
+      if (e.code === 'ENOENT') {
+        try {
+          const base = process.env.APP_ORIGIN || 'https://beaverbux.ca'
+          const resp = await fetch(`${base}/data/payments.json`)
+          if (resp.ok) {
+            arr = await resp.json()
+          } else {
+            throw new Error('Static payments.json fetch failed with ' + resp.status)
+          }
+        } catch (e2) {
+          throw e // rethrow original to be handled below
+        }
+      } else {
+        throw e
+      }
+    }
     const payment = arr.find((p: any) => p.claim_token === token)
     if (!payment) return new Response(JSON.stringify({ ok: false, error: 'Token not found' }), { status: 404 })
     return new Response(JSON.stringify({ ok: true, payment }), { status: 200 })

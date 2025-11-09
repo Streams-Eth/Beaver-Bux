@@ -1,0 +1,59 @@
+[
+  {
+    "source": "paypal",
+    "transaction_id": "5M112141K6976190X",
+    "date": "2025-10-31T17:02:41-07:00",
+    "buyer_name": "Sara Ali",
+    "buyer_email": "sara3.aw@yahoo.com",
+    "shipping_address": {
+      "name": "Sara Ali",
+      "street": "50 Briarwood Ave",
+      "city": "Toronto",
+      "province": "ON",
+      "postal_code": "M9W6G7",
+      "country": "CANADA"
+    },
+    "item_description": "1,904.762 BBUX Tokens",
+    "tokens": 1904.762,
+    "quantity": 1,
+    "gross_cad": 4.00,
+    "paypal_fee_cad": 0.42,
+    "net_cad": 3.58,
+    "receipt_id": "1603586948223554",
+    "from_email": "sara3.aw@yahoo.com",
+    "csv_item_title": "1,904.762 BBUX Tokens",
+    "claim_token": "bbux-claim-sara-0004",
+    "claim_expires": "2025-11-30T00:00:00.000Z",
+    "status": "completed",
+    "notes": "Recorded from merchant PayPal notification. Tokens not yet delivered on-chain; no wallet address provided."
+  },
+  {
+    "source": "paypal",
+    "transaction_id": "77325131MN776241X",
+    "date": "2025-11-02T21:26:06-08:00",
+    "buyer_name": "Sara Ali",
+    "buyer_email": "sara3.aw@yahoo.com",
+    "to_email": "swapstream.finance@gmail.com",
+    "shipping_address": {
+      "name": "Sara Ali",
+      "street": "50 Briarwood Ave",
+      "city": "Toronto",
+      "province": "ON",
+      "postal_code": "M9W6G7",
+      "country": "CANADA"
+    },
+    "item_description": "100,000 BBUX Tokens",
+    "tokens": 100000,
+    "quantity": 1,
+    "gross_cad": 210.00,
+    "paypal_fee_cad": 6.39,
+    "net_cad": 203.61,
+    "receipt_id": "2648197704090198",
+    "from_email": "sara3.aw@yahoo.com",
+    "csv_item_title": "100,000 BBUX Tokens",
+    "claim_token": "bbux-claim-sara-0004",
+    "claim_expires": "2025-11-30T00:00:00.000Z",
+    "status": "completed",
+    "notes": "Imported from PayPal CSV."
+  }
+]
