@@ -22,7 +22,16 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           import("@wagmi/core"),
         ])
         if (!mounted) return
-        setImpl({ WagmiConfig, createConfig: core.createConfig, injected: core.injected })
+        const newImpl = { WagmiConfig, createConfig: core.createConfig, injected: core.injected }
+        setImpl(newImpl)
+        try {
+          if (typeof window !== "undefined") {
+            ;(window as any).__WAGMI_IMPL_LOADED = true
+            // expose for quick debugging in deployed consoles
+            document?.body?.setAttribute?.('data-wagmi-impl', 'loaded')
+            console.info('Web3Provider: wagmi impl loaded')
+          }
+        } catch (e) {}
       } catch (e) {
         // If dynamic import fails, we fall back to rendering children without Wagmi.
         console.error("Failed to load wagmi on client:", e)
@@ -36,9 +45,29 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const provider = useMemo(() => {
     if (!impl) return null
     try {
-      return impl.createConfig({ autoConnect: true, connectors: [impl.injected()] })
+      const cfg = impl.createConfig({ autoConnect: true, connectors: [impl.injected()] })
+      try {
+        // Mark global flag so client components can detect that a Wagmi
+        // provider was successfully created. Some components render before
+        // the provider is ready; they can check this flag and avoid calling
+        // wagmi hooks when false to prevent provider-not-found errors.
+        if (typeof window !== "undefined") (window as any).__WAGMI_READY = true
+        try {
+          if (typeof window !== "undefined") {
+            ;(window as any).__WAGMI_PROVIDER_READY = true
+            document?.body?.setAttribute?.('data-wagmi-provider', 'ready')
+            console.info('Web3Provider: wagmi provider created')
+          }
+        } catch (e) {}
+      } catch (e) {
+        // ignore
+      }
+      return cfg
     } catch (e) {
       console.error("Failed to create wagmi config:", e)
+      try {
+        if (typeof window !== "undefined") (window as any).__WAGMI_READY = false
+      } catch (ee) {}
       return null
     }
   }, [impl])
