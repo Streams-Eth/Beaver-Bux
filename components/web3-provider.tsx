@@ -38,9 +38,27 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const provider = useMemo(() => {
     if (!impl) return null
     try {
-      return impl.createConfig({ autoConnect: true, connectors: [impl.injected()] })
+      // Defensive: ensure injected() exists and returns a sensible connector
+      let injectedConnector: any = null
+      try {
+        if (typeof impl.injected === 'function') injectedConnector = impl.injected()
+      } catch (e) {
+        console.error('Injected connector init failed:', e)
+        injectedConnector = null
+      }
+
+      if (!injectedConnector) {
+        // If we couldn't initialize the injected connector, avoid calling
+        // createConfig with a broken connectors array. Mark a load error so
+        // we stop blocking the app and render children unwrapped.
+        setLoadError(true)
+        return null
+      }
+
+      return impl.createConfig({ autoConnect: true, connectors: [injectedConnector] })
     } catch (e) {
       console.error("Failed to create wagmi config:", e)
+      setLoadError(true)
       return null
     }
   }, [impl])
