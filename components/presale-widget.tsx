@@ -113,6 +113,40 @@ export function PresaleWidget() {
         setNextStage(STAGES[nextIndex])
       }
     }
+
+    // Read header-based wallet connects (legacy path) so header connect updates
+    // this widget even when wagmi isn't present. Header sets the raw address in
+    // localStorage under 'bbux_wallet_address' and dispatches a custom event.
+    try {
+      const stored = localStorage.getItem('bbux_wallet_address')
+      if (stored) {
+        setAccount(stored)
+        setIsConnected(true)
+      }
+    } catch (e) {}
+
+    const onWalletChanged = (ev: any) => {
+      try {
+        const addr = ev?.detail?.address || null
+        if (addr) {
+          setAccount(addr)
+          setIsConnected(true)
+        } else {
+          setAccount(null)
+          setIsConnected(false)
+        }
+      } catch (e) {}
+    }
+
+    try {
+      window.addEventListener('bbux:wallet-changed', onWalletChanged as EventListener)
+    } catch (e) {}
+
+    return () => {
+      try {
+        window.removeEventListener('bbux:wallet-changed', onWalletChanged as EventListener)
+      } catch (e) {}
+    }
   }, [])
 
   const calculateTokens = (ethAmount: number) => {

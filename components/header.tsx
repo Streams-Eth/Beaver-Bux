@@ -18,11 +18,18 @@ export function Header() {
           method: 'eth_requestAccounts' 
         })
         
-        if (accounts.length > 0) {
+        const accs = Array.isArray(accounts) ? accounts : []
+        if (accs.length > 0) {
           // Shorten the address for display
-          const address = accounts[0]
+          const address = accs[0]
           const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
           setWalletAddress(shortened)
+          try {
+            // Persist raw address so other components can pick it up
+            localStorage.setItem('bbux_wallet_address', address)
+            // notify other components
+            window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } }))
+          } catch (e) {}
         }
       } else {
         alert('Please install MetaMask or another Web3 wallet!')
@@ -31,6 +38,16 @@ export function Header() {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
     }
+  }
+
+  const disconnectWallet = () => {
+    try {
+      localStorage.removeItem('bbux_wallet_address')
+    } catch (e) {}
+    try {
+      window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
+    } catch (e) {}
+    setWalletAddress(null)
   }
 
   return (
@@ -62,12 +79,18 @@ export function Header() {
             <a href="#roadmap" className="text-foreground hover:text-primary transition-colors">
               Roadmap
             </a>
-            <Button 
-              onClick={connectWallet}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {walletAddress || 'Connect Wallet'}
-            </Button>
+            {!walletAddress ? (
+              <Button 
+                onClick={connectWallet}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Connect Wallet
+              </Button>
+            ) : (
+              <Button onClick={disconnectWallet} className="bg-muted text-foreground">
+                Disconnect ({walletAddress})
+              </Button>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}
@@ -107,12 +130,18 @@ export function Header() {
             >
               Roadmap
             </a>
-            <Button 
-              onClick={connectWallet}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {walletAddress || 'Connect Wallet'}
-            </Button>
+            {!walletAddress ? (
+              <Button 
+                onClick={connectWallet}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Connect Wallet
+              </Button>
+            ) : (
+              <Button onClick={disconnectWallet} className="bg-muted text-foreground">
+                Disconnect ({walletAddress})
+              </Button>
+            )}
           </nav>
         )}
       </div>
