@@ -107,28 +107,30 @@ export async function POST(req: Request) {
       }
 
       // Look for captures inside purchase_units (order flows)
-      if (!gross && resource.purchase_units && Array.isArray(resource.purchase_units)) {
-        const pu = resource.purchase_units[0]
+      if (!gross && Array.isArray(resource.purchase_units) && resource.purchase_units.length > 0) {
+        const pu = resource.purchase_units?.[0]
         description = pu?.description || pu?.reference_id || description
         // Attempt to extract buyer wallet if provided in custom_id in format: <referenceId>|<wallet>
-        try {
-          const custom = pu?.custom_id || pu?.invoice_id || null
-          if (custom && typeof custom === 'string' && custom.includes('|')) {
-            const parts = custom.split('|')
-            record.claim_reference = parts[0]
-            // simple validation of wallet
-            const possible = parts[1]
-            if (/^0x[a-fA-F0-9]{40}$/.test(possible)) {
-              record.buyer_wallet = possible
+          try {
+            const custom = pu?.custom_id || pu?.invoice_id || null
+            if (custom && typeof custom === 'string' && custom.includes('|')) {
+              const parts = custom.split('|')
+              if (parts.length > 0) {
+                record.claim_reference = parts[0]
+              }
+              // simple validation of wallet
+              const possible = parts[1]
+              if (possible && /^0x[a-fA-F0-9]{40}$/.test(possible)) {
+                record.buyer_wallet = possible
+              }
+            } else if (custom) {
+              record.claim_reference = String(custom)
             }
-          } else if (custom) {
-            record.claim_reference = String(custom)
+          } catch (e) {
+            // ignore
           }
-        } catch (e) {
-          // ignore
-        }
-        if (pu?.payments?.captures && Array.isArray(pu.payments.captures) && pu.payments.captures[0]) {
-          const c = pu.payments.captures[0]
+        if (pu?.payments?.captures && Array.isArray(pu.payments.captures) && pu.payments.captures.length > 0) {
+          const c = pu.payments.captures?.[0]
           gross = c.amount?.value || gross
           currency = c.amount?.currency_code || currency
           txId = c.id || txId
@@ -144,9 +146,11 @@ export async function POST(req: Request) {
           if (topCustom && typeof topCustom === 'string') {
             if (topCustom.includes('|')) {
               const parts = topCustom.split('|')
-              record.claim_reference = parts[0]
+              if (parts.length > 0) {
+                record.claim_reference = parts[0]
+              }
               const possible = parts[1]
-              if (/^0x[a-fA-F0-9]{40}$/.test(possible)) {
+              if (possible && /^0x[a-fA-F0-9]{40}$/.test(possible)) {
                 record.buyer_wallet = possible
               }
             } else {
@@ -159,7 +163,7 @@ export async function POST(req: Request) {
       }
 
       // Fallbacks
-      description = description || (resource.purchase_units && resource.purchase_units[0] && resource.purchase_units[0].description) || event.summary || null
+  description = description || resource.purchase_units?.[0]?.description || event.summary || null
       txId = txId || resource.id || event.id || null
 
       // Parse token count from description if present (e.g. "1,904.762 BBUX Tokens")
