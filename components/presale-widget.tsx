@@ -53,6 +53,15 @@ export function PresaleWidget() {
   const [amount, setAmount] = useState("")
   const [isConnected, setIsConnected] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
+  const [debugLogs, setDebugLogs] = useState<string[]>([])
+  const debugMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
+
+  const addLog = (msg: string) => {
+    try {
+      setDebugLogs((s) => [...s.slice(-50), `${new Date().toISOString()} ${msg}`])
+      console.log('[PresaleDebug]', msg)
+    } catch (e) {}
+  }
   // Wagmi hooks are used inside WalletControls which is only rendered when
   // the Wagmi provider is available (see window.__WAGMI_READY set by the
   // Web3Provider). This avoids calling wagmi hooks when the provider is not
@@ -176,10 +185,10 @@ export function PresaleWidget() {
           className="flex-1 bg-primary text-primary-foreground text-lg py-6"
           onClick={async () => {
             try {
-                  console.info('Presale: fallback connect clicked')
+                  addLog('fallback connect clicked')
               // Try injected provider first
               if (typeof window !== 'undefined' && (window as any).ethereum) {
-                    console.info('Presale: detected window.ethereum, attempting injected connect')
+                    addLog('detected window.ethereum, attempting injected connect')
                 try {
                   await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
                   const provider = new ethers.providers.Web3Provider((window as any).ethereum)
@@ -187,22 +196,30 @@ export function PresaleWidget() {
                   const addr = await signer.getAddress()
                   setAccount(addr)
                   setIsConnected(true)
-                      console.info('Presale: injected connect succeeded', addr)
+                      addLog(`injected connect succeeded ${addr}`)
                       try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
                       try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                   return
                 } catch (e) {
-                      console.warn('Presale: injected connect failed', e)
+                      addLog(`injected connect failed: ${String((e as any)?.message || e)}`)
                 }
               }
 
               // Try WalletConnect Universal Provider as a fallback
               try {
-                console.info('Presale: attempting WalletConnect Universal Provider fallback')
+                addLog('attempting WalletConnect Universal Provider fallback')
                 const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
                 const UniversalProviderModule = await import('@walletconnect/universal-provider')
                 const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
-                const wc = await UniversalProvider.init({ projectId })
+                const wc = await UniversalProvider.init({
+                  projectId,
+                  metadata: {
+                    name: 'Beaver Bux',
+                    description: 'Beaver Bux Presale',
+                    url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
+                    icons: [],
+                  },
+                })
                 // prompt connection
                 await wc.connect()
                 // attempt to read accounts (structure may vary)
@@ -217,7 +234,7 @@ export function PresaleWidget() {
                 if (addr) {
                   setAccount(addr)
                   setIsConnected(true)
-                  console.info('Presale: WalletConnect fallback succeeded', addr)
+                  addLog(`WalletConnect fallback succeeded ${addr}`)
                     try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
                     try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                 } else {
@@ -225,7 +242,7 @@ export function PresaleWidget() {
                 }
                 return
               } catch (e) {
-                console.warn('Presale: WalletConnect fallback failed', e)
+                addLog(`WalletConnect fallback failed: ${String((e as any)?.message || e)}`)
               }
 
               alert('Wallet integration unavailable in this browser session')
