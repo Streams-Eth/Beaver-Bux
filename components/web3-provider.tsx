@@ -43,14 +43,22 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     }
   }, [impl])
 
-  // Do not render children until the wagmi implementation and provider are ready.
-  // Rendering children early causes hooks like useAccount/useConnect to run
-  // without a WagmiProvider which throws at runtime. Show a minimal placeholder
-  // while wagmi is loading on the client.
-  if (!impl || !provider) {
-    return (
-      <div aria-hidden="true" id="web3-loading" />
-    )
+  // While wagmi is still being dynamically imported, keep a minimal loading
+  // placeholder so server/client hydration remains stable. Once the import
+  // has completed (`impl` is set) but we couldn't create a provider, allow
+  // the app to render children unwrapped (this prevents a blank page). Some
+  // components may still call wagmi hooks and will throw if they expect the
+  // provider; if that happens we should add targeted guards in those
+  // components. For now prefer showing the UI rather than a blank screen.
+  if (!impl) {
+    return <div aria-hidden="true" id="web3-loading" />
+  }
+
+  if (!provider) {
+    // Failed to initialize wagmi provider — render children so the app is
+    // usable (wallet-specific features will be no-ops). Log for debugging.
+    console.warn("Wagmi provider not available; rendering children without Wagmi")
+    return <>{children}</>
   }
 
   const WagmiConfig = impl.WagmiConfig
