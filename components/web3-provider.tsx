@@ -11,6 +11,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     WagmiConfig: any
     createConfig: (opts: any) => any
     injected: () => any
+    // walletConnect is optional and may not be present on the imported core
+    walletConnect?: (opts: any) => any
   } | null>(null)
 
   useEffect(() => {
@@ -22,7 +24,13 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           import("@wagmi/core"),
         ])
         if (!mounted) return
-        const newImpl = { WagmiConfig, createConfig: core.createConfig, injected: core.injected }
+        const newImpl = {
+          WagmiConfig,
+          createConfig: core.createConfig,
+          injected: core.injected,
+          // WalletConnect factory may be available on @wagmi/core
+          walletConnect: (core as any).walletConnect || (core as any).walletConnectConnector || undefined,
+        }
         setImpl(newImpl)
         try {
           if (typeof window !== "undefined") {
@@ -45,7 +53,32 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const provider = useMemo(() => {
     if (!impl) return null
     try {
-      const cfg = impl.createConfig({ autoConnect: true, connectors: [impl.injected()] })
+      // Build connectors list: prefer injected (MetaMask etc.) and include
+      // WalletConnect when available. Use the NEXT_PUBLIC_WC_PROJECT_ID env
+      // or fallback to the projectId the user provided.
+      const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+      const connectors: any[] = []
+      try {
+        const inj = impl.injected && impl.injected()
+        if (inj) connectors.push(inj)
+      } catch (e) {}
+      try {
+        if (impl.walletConnect && projectId) {
+          const wcFactory = impl.walletConnect
+          // factory might be named walletConnect or similar; try to call it
+          const wc = wcFactory({ projectId })
+          if (wc) connectors.push(wc)
+        }
+      } catch (e) {
+        // ignore walletConnect creation failures
+        console.warn('Web3Provider: walletConnect connector creation failed', e)
+      }
+
+      if (connectors.length === 0) {
+        throw new Error('no connectors available')
+      }
+
+      const cfg = impl.createConfig({ autoConnect: true, connectors })
       try {
         // Mark global flag so client components can detect that a Wagmi
         // provider was successfully created. Some components render before
