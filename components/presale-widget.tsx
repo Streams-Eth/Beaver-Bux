@@ -62,6 +62,34 @@ export function PresaleWidget() {
       console.log('[PresaleDebug]', msg)
     } catch (e) {}
   }
+  const wcRef = useRef<any>(null)
+  const prefetchingRef = useRef(false)
+
+  const prefetchWalletConnect = async () => {
+    if (typeof window === 'undefined' || prefetchingRef.current) return
+    prefetchingRef.current = true
+    try {
+      addLog('prefetching WalletConnect module')
+      const UniversalProviderModule = await import('@walletconnect/universal-provider')
+      const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
+      const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+      addLog('initializing WalletConnect provider')
+      const wc = await UniversalProvider.init({
+        projectId,
+        metadata: {
+          name: 'Beaver Bux',
+          description: 'Beaver Bux Presale',
+          url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaverbux.ca',
+          icons: [],
+        },
+      })
+      wcRef.current = wc
+      addLog('WalletConnect pre-initialized')
+    } catch (e) {
+      addLog(`WalletConnect prefetch error: ${String((e as any)?.message || e)}`)
+      prefetchingRef.current = false
+    }
+  }
   // Wagmi hooks are used inside WalletControls which is only rendered when
   // the Wagmi provider is available (see window.__WAGMI_READY set by the
   // Web3Provider). This avoids calling wagmi hooks when the provider is not
@@ -183,6 +211,8 @@ export function PresaleWidget() {
       <div className="flex gap-2">
         <Button
           className="flex-1 bg-primary text-primary-foreground text-lg py-6"
+          onPointerEnter={prefetchWalletConnect}
+          onMouseEnter={prefetchWalletConnect}
           onClick={async () => {
             try {
                   addLog('fallback connect clicked')
@@ -208,18 +238,23 @@ export function PresaleWidget() {
               // Try WalletConnect Universal Provider as a fallback
               try {
                 addLog('attempting WalletConnect Universal Provider fallback')
-                const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
-                const UniversalProviderModule = await import('@walletconnect/universal-provider')
-                const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
-                const wc = await UniversalProvider.init({
-                  projectId,
-                  metadata: {
-                    name: 'Beaver Bux',
-                    description: 'Beaver Bux Presale',
-                    url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
-                    icons: [],
-                  },
-                })
+                // If we pre-initialized provider on hover, reuse it so connect() stays
+                // in a user gesture and avoids popup blocking.
+                let wc = wcRef.current
+                if (!wc) {
+                  const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+                  const UniversalProviderModule = await import('@walletconnect/universal-provider')
+                  const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
+                  wc = await UniversalProvider.init({
+                    projectId,
+                    metadata: {
+                      name: 'Beaver Bux',
+                      description: 'Beaver Bux Presale',
+                      url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
+                      icons: [],
+                    },
+                  })
+                }
                 // prompt connection
                 await wc.connect()
                 // attempt to read accounts (structure may vary)
