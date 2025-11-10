@@ -93,6 +93,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         return null
       }
 
+      // Diagnostic: expose a lightweight snapshot of connectors for debugging
+      try {
+        const snapshot = connectors.map((c: any, i: number) => ({
+          index: i,
+          type: typeof c,
+          id: (c && (c.id || c.name)) || null,
+          hasConnect: !!(c && (c.connect || c.connectAsync)),
+        }))
+        console.info('Web3Provider: connectors snapshot', snapshot)
+        try { document?.body?.setAttribute?.('data-wagmi-connectors', JSON.stringify(snapshot)) } catch (e) {}
+      } catch (e) {}
+
       let cfg: any = null
       try {
         cfg = impl.createConfig({ autoConnect: true, connectors })

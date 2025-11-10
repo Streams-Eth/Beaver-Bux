@@ -213,6 +213,7 @@ export function PresaleWidget() {
           className="flex-1 bg-primary text-primary-foreground text-lg py-6"
           onPointerEnter={prefetchWalletConnect}
           onMouseEnter={prefetchWalletConnect}
+          onTouchStart={prefetchWalletConnect}
           onClick={async () => {
             try {
                   addLog('fallback connect clicked')
@@ -238,10 +239,12 @@ export function PresaleWidget() {
               // Try WalletConnect Universal Provider as a fallback
               try {
                 addLog('attempting WalletConnect Universal Provider fallback')
-                // If we pre-initialized provider on hover, reuse it so connect() stays
-                // in a user gesture and avoids popup blocking.
+                // If we pre-initialized provider on hover/touch, reuse it so connect()
+                // runs inside a user gesture and avoids popup blocking. If it's not
+                // present, initialize now.
                 let wc = wcRef.current
                 if (!wc) {
+                  addLog('no preinitialized WalletConnect found; initializing now')
                   const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
                   const UniversalProviderModule = await import('@walletconnect/universal-provider')
                   const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
@@ -255,8 +258,14 @@ export function PresaleWidget() {
                     },
                   })
                 }
-                // prompt connection
-                await wc.connect()
+                // prompt connection and handle errors explicitly
+                try {
+                  await wc.connect()
+                } catch (connectErr) {
+                  addLog(`WalletConnect connect() failed: ${String((connectErr as any)?.message || connectErr)}`)
+                  alert('WalletConnect failed to open. If you are on mobile, ensure your wallet app supports WalletConnect and try again.')
+                  return
+                }
                 // attempt to read accounts (structure may vary)
                 const accounts = (wc as any).accounts || (wc as any).session?.namespaces?.eip155?.accounts || []
                 let addr: string | null = null

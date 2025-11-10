@@ -25,10 +25,12 @@ export async function GET() {
     const filePath = path.join(process.cwd(), 'data', 'payments.json')
     try {
       const raw = await fs.readFile(filePath, 'utf8')
-      const arr = JSON.parse(raw)
+      let arr = JSON.parse(raw)
+      if (!Array.isArray(arr)) arr = []
       return new Response(JSON.stringify({ ok: true, payments: arr }), { status: 200 })
     } catch (e) {
-      return new Response(JSON.stringify({ ok: false, error: 'No payments found' }), { status: 404 })
+      // If file missing or invalid, return an empty payments array instead of 404
+      return new Response(JSON.stringify({ ok: true, payments: [] }), { status: 200 })
     }
   } catch (err) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500 })
