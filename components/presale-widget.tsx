@@ -53,9 +53,10 @@ export function PresaleWidget() {
   const [amount, setAmount] = useState("")
   const [isConnected, setIsConnected] = useState(false)
   const [account, setAccount] = useState<string | null>(null)
-  const { address, isConnected: wagmiIsConnected } = useAccount()
-  const { connect, connectors } = useConnect()
-  const { disconnect } = useDisconnect()
+  // Wagmi hooks are used inside WalletControls which is only rendered when
+  // the Wagmi provider is available (see window.__WAGMI_READY set by the
+  // Web3Provider). This avoids calling wagmi hooks when the provider is not
+  // present which would throw `useConfig must be used within WagmiProvider`.
   const [currentStage, setCurrentStage] = useState(STAGES[0])
   const [nextStage, setNextStage] = useState(STAGES[1])
   const paypalRef = useRef<HTMLDivElement>(null)
@@ -88,15 +89,6 @@ export function PresaleWidget() {
   }, [])
 
   useEffect(() => {
-    // sync wagmi account state to local state
-    if (wagmiIsConnected && address) {
-      setAccount(address)
-      setIsConnected(true)
-    } else {
-      setAccount(null)
-      setIsConnected(false)
-    }
-
     // Auto-save ?claim=bbux-claim-... into localStorage so PayPal orders include it
     try {
       const qp = new URLSearchParams(window.location.search)
@@ -129,6 +121,125 @@ export function PresaleWidget() {
 
   const tokensToReceive = amount ? calculateTokens(Number.parseFloat(amount)) : 0
   const cadEquivalent = amount ? Number.parseFloat(amount) * ETH_TO_CAD : 0
+
+  // Inner wallet-aware UI. This component uses wagmi hooks and MUST only be
+  // rendered when the Wagmi provider is available. We rely on the global
+  // flag `window.__WAGMI_READY` which is set by `Web3Provider` when the
+  // provider is successfully created.
+  function WalletControls({
+    amount,
+    tokensToReceive,
+  }: {
+    amount: string
+    tokensToReceive: number
+  }) {
+    // Only render wagmi UI when provider ready
+    if (typeof window === 'undefined' || !(window as any).__WAGMI_READY) return (
+      <div className="flex gap-2">
+        <Button className="flex-1 bg-primary text-primary-foreground text-lg py-6" onClick={() => { alert('Wallet integration unavailable in this browser session') }}>
+          <Wallet className="mr-2" size={20} />
+          Connect Wallet
+        </Button>
+      </div>
+    )
+
+    const { address, isConnected: wagmiIsConnected } = useAccount()
+    const { connect, connectors } = useConnect()
+    const { disconnect } = useDisconnect()
+
+    // sync wagmi account state to local state
+    useEffect(() => {
+      if (wagmiIsConnected && address) {
+        setAccount(address)
+        setIsConnected(true)
+      } else {
+        setAccount(null)
+        setIsConnected(false)
+      }
+    }, [wagmiIsConnected, address])
+
+    return (
+      <div className="flex gap-2">
+        {!isConnected ? (
+          <Button
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
+            onClick={async () => {
+              try {
+                // prefer injected connector if available, otherwise open first connector (WalletConnect)
+                const injected = connectors.find((c: any) => c.id === 'injected')
+                const connectorToUse = injected || connectors[0]
+                await connect({ connector: connectorToUse })
+              } catch (e) {
+                console.error('Wallet connect error:', e)
+                alert('Failed to connect wallet')
+              }
+            }}
+          >
+            <Wallet className="mr-2" size={20} />
+            Connect Wallet
+          </Button>
+        ) : (
+          <>
+            <Button
+              className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
+              disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
+              onClick={async () => {
+                // Use injected provider's signer via ethers (window.ethereum)
+                if (typeof window === 'undefined' || !(window as any).ethereum) {
+                  alert('Wallet not connected')
+                  return
+                }
+
+                const ethAmount = Number.parseFloat(amount || '0')
+                if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
+                  alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
+                  return
+                }
+
+                try {
+                  const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+                  const signer = provider.getSigner()
+                  const tx = await signer.sendTransaction({
+                    to: PRESALE_CONTRACT,
+                    value: ethers.utils.parseEther(String(ethAmount)),
+                  })
+                  console.log('[v0] Payment tx sent', tx.hash)
+                  alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
+                  try {
+                    const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
+                    stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive })
+                    localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
+                  } catch (e) {
+                    // ignore
+                  }
+                } catch (e) {
+                  console.error('Buy error', e)
+                  alert('Failed to send transaction')
+                }
+              }}
+            >
+              Buy BBUX
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="px-4 py-6 border rounded text-sm"
+              onClick={() => {
+                // delegate to wagmi disconnect if available, otherwise clear local state
+                try {
+                  disconnect?.()
+                } catch (e) {}
+                setAccount(null)
+                setIsConnected(false)
+              }}
+            >
+              Disconnect ({account ? `${account.slice(0,6)}...${account.slice(-4)}` : '—'})
+            </Button>
+          </>
+        )}
+      </div>
+    )
+  }
 
   useEffect(() => {
     // Require wallet connect for PayPal purchases: buyer must connect a wallet first
@@ -355,83 +466,8 @@ export function PresaleWidget() {
           </TabsContent>
         </Tabs>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          {!isConnected ? (
-            <Button
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
-              onClick={async () => {
-                try {
-                  // prefer injected connector if available, otherwise open first connector (WalletConnect)
-                  const injected = connectors.find((c: any) => c.id === 'injected')
-                  const connectorToUse = injected || connectors[0]
-                  await connect({ connector: connectorToUse })
-                } catch (e) {
-                  console.error('Wallet connect error:', e)
-                  alert('Failed to connect wallet')
-                }
-              }}
-            >
-              <Wallet className="mr-2" size={20} />
-              Connect Wallet
-            </Button>
-          ) : (
-            <>
-              <Button
-                className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-                disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
-                onClick={async () => {
-                    // Use injected provider's signer via ethers (window.ethereum) instead of wagmi's useSigner
-                    if (typeof window === 'undefined' || !(window as any).ethereum) {
-                      alert('Wallet not connected')
-                      return
-                    }
-
-                    const ethAmount = Number.parseFloat(amount || '0')
-                    if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
-                      alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
-                      return
-                    }
-
-                    try {
-                      const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-                      const signer = provider.getSigner()
-                      const tx = await signer.sendTransaction({
-                        to: PRESALE_CONTRACT,
-                        value: ethers.utils.parseEther(String(ethAmount)),
-                      })
-                      console.log('[v0] Payment tx sent', tx.hash)
-                      alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
-                    try {
-                      const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
-                      stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive })
-                      localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
-                    } catch (e) {
-                      // ignore
-                    }
-                  } catch (e) {
-                    console.error('Buy error', e)
-                    alert('Failed to send transaction')
-                  }
-                }}
-              >
-                Buy BBUX
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="px-4 py-6 border rounded text-sm"
-                onClick={() => {
-                  // simple disconnect: clear local state
-                  setAccount(null)
-                  setIsConnected(false)
-                }}
-              >
-                Disconnect ({account ? `${account.slice(0,6)}...${account.slice(-4)}` : '—'})
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Action Buttons (wallet-aware) */}
+        <WalletControls amount={amount} tokensToReceive={tokensToReceive} />
 
         <div className="text-xs text-center text-muted-foreground space-y-1">
           <p>
