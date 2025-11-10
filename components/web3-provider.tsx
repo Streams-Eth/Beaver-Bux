@@ -39,6 +39,23 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const provider = useMemo(() => {
     if (!impl) return null
     try {
+      // Only attempt to initialize an injected connector if we're in a
+      // browser and there is an injected provider present (e.g. MetaMask).
+      // When no injected provider exists, calling `injected()` or
+      // `createConfig` can throw or produce an invalid connectors value that
+      // leads to runtime errors like "Cannot read properties of undefined
+      // (reading '0')" inside wagmi internals. Skip initialization instead
+      // and show the explicit fallback UI.
+      const hasInjectedProvider = typeof window !== 'undefined' && (
+        (window as any).ethereum || (window as any).web3
+      )
+
+      if (!hasInjectedProvider) {
+        console.info('No injected wallet provider detected; skipping wagmi config')
+        setLoadError(true)
+        return null
+      }
+
       // Defensive: ensure injected() exists and returns a sensible connector
       let injectedConnector: any = null
       try {
