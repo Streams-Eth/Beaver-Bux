@@ -18,16 +18,15 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     let mounted = true
     ;(async () => {
       try {
-        // Import from 'wagmi' only to avoid mixing @wagmi/core instances which
-        // can lead to duplicate contexts and the `useConfig must be used within
-        // WagmiProvider` runtime error.
-        const mod = await import('wagmi')
-        const { WagmiConfig, createConfig, injected } = mod as any
+        const [{ WagmiConfig }, core] = await Promise.all([
+          import("wagmi"),
+          import("@wagmi/core"),
+        ])
         if (!mounted) return
-        setImpl({ WagmiConfig, createConfig, injected })
+        setImpl({ WagmiConfig, createConfig: core.createConfig, injected: core.injected })
       } catch (e) {
         // If dynamic import fails, we fall back to rendering children without Wagmi.
-        console.error('Failed to load wagmi on client:', e)
+        console.error("Failed to load wagmi on client:", e)
         setLoadError(true)
       }
     })()
@@ -92,13 +91,11 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
                 // the import again manually here.
                 ;(async () => {
                   try {
-                        try {
-                          const mod = await import('wagmi')
-                          const { WagmiConfig, createConfig, injected } = mod as any
-                          setImpl({ WagmiConfig, createConfig, injected })
-                        } catch (e) {
-                          throw e
-                        }
+                    const [{ WagmiConfig }, core] = await Promise.all([
+                      import('wagmi'),
+                      import('@wagmi/core'),
+                    ])
+                    setImpl({ WagmiConfig, createConfig: core.createConfig, injected: core.injected })
                   } catch (e) {
                     console.error('Retry: Failed to load wagmi on client:', e)
                     setLoadError(true)
