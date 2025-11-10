@@ -133,10 +133,65 @@ export function PresaleWidget() {
     amount: string
     tokensToReceive: number
   }) {
-    // Only render wagmi UI when provider ready
+    // Only render wagmi UI when provider ready. If wagmi isn't available
+    // attempt a lightweight fallback: prefer injected provider (MetaMask/etc.)
+    // and fall back to WalletConnect Universal Provider when possible.
     if (typeof window === 'undefined' || !(window as any).__WAGMI_READY) return (
       <div className="flex gap-2">
-        <Button className="flex-1 bg-primary text-primary-foreground text-lg py-6" onClick={() => { alert('Wallet integration unavailable in this browser session') }}>
+        <Button
+          className="flex-1 bg-primary text-primary-foreground text-lg py-6"
+          onClick={async () => {
+            try {
+              // Try injected provider first
+              if (typeof window !== 'undefined' && (window as any).ethereum) {
+                try {
+                  await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
+                  const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+                  const signer = provider.getSigner()
+                  const addr = await signer.getAddress()
+                  setAccount(addr)
+                  setIsConnected(true)
+                  return
+                } catch (e) {
+                  console.warn('Injected connect failed', e)
+                }
+              }
+
+              // Try WalletConnect Universal Provider as a fallback
+              try {
+                const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+                const UniversalProviderModule = await import('@walletconnect/universal-provider')
+                const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
+                const wc = await UniversalProvider.init({ projectId })
+                // prompt connection
+                await wc.connect()
+                // attempt to read accounts (structure may vary)
+                const accounts = (wc as any).accounts || (wc as any).session?.namespaces?.eip155?.accounts || []
+                let addr: string | null = null
+                if (Array.isArray(accounts) && accounts.length > 0) {
+                  // accounts sometimes are in the form 'eip155:1:0xabc...'
+                  const raw = accounts[0]
+                  const parts = String(raw).split(':')
+                  addr = parts[parts.length - 1]
+                }
+                if (addr) {
+                  setAccount(addr)
+                  setIsConnected(true)
+                } else {
+                  alert('Connected, but could not read account address from WalletConnect provider')
+                }
+                return
+              } catch (e) {
+                console.warn('WalletConnect fallback failed', e)
+              }
+
+              alert('Wallet integration unavailable in this browser session')
+            } catch (e) {
+              console.error('Fallback connect error', e)
+              alert('Failed to connect wallet')
+            }
+          }}
+        >
           <Wallet className="mr-2" size={20} />
           Connect Wallet
         </Button>
