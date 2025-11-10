@@ -185,6 +185,8 @@ export function PresaleWidget() {
                   const addr = await signer.getAddress()
                   setAccount(addr)
                   setIsConnected(true)
+                      try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
+                      try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                   return
                 } catch (e) {
                   console.warn('Injected connect failed', e)
@@ -211,6 +213,8 @@ export function PresaleWidget() {
                 if (addr) {
                   setAccount(addr)
                   setIsConnected(true)
+                    try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
+                    try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                 } else {
                   alert('Connected, but could not read account address from WalletConnect provider')
                 }
@@ -245,6 +249,20 @@ export function PresaleWidget() {
         setAccount(null)
         setIsConnected(false)
       }
+    }, [wagmiIsConnected, address])
+
+    // mirror wagmi connects/disconnects to localStorage and broadcast so header
+    // and other components stay in sync when wagmi is used here.
+    useEffect(() => {
+      try {
+        if (wagmiIsConnected && address) {
+          localStorage.setItem('bbux_wallet_address', address)
+          window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } }))
+        } else {
+          localStorage.removeItem('bbux_wallet_address')
+          window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
+        }
+      } catch (e) {}
     }, [wagmiIsConnected, address])
 
     return (
@@ -317,6 +335,12 @@ export function PresaleWidget() {
                 // delegate to wagmi disconnect if available, otherwise clear local state
                 try {
                   disconnect?.()
+                } catch (e) {}
+                try {
+                  localStorage.removeItem('bbux_wallet_address')
+                } catch (e) {}
+                try {
+                  window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
                 } catch (e) {}
                 setAccount(null)
                 setIsConnected(false)
