@@ -2,10 +2,11 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 
 export default function Tokenomics() {
-  return (
-    <>
-      <Header />
-      <main className="min-h-screen bg-background">
+  try {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-background">
         <div id="about" className="max-w-4xl mx-auto p-8">
           <h1 className="text-4xl font-bold mb-6">📊 BBUX Tokenomics</h1>
           <p className="mb-6">
@@ -54,6 +55,21 @@ export default function Tokenomics() {
       </section>
     </main>
     <Footer />
-    </>
-  )
+      </>
+    )
+  } catch (e) {
+    console.error('Tokenomics render error:', e)
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-background">
+          <div className="container mx-auto px-4 py-16 max-w-4xl">
+            <h1 className="text-4xl font-bold mb-6">📊 BBUX Tokenomics</h1>
+            <div className="p-6 bg-muted rounded">Tokenomics data is currently unavailable. Please try again later.</div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
 }
