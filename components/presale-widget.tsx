@@ -176,8 +176,10 @@ export function PresaleWidget() {
           className="flex-1 bg-primary text-primary-foreground text-lg py-6"
           onClick={async () => {
             try {
+                  console.info('Presale: fallback connect clicked')
               // Try injected provider first
               if (typeof window !== 'undefined' && (window as any).ethereum) {
+                    console.info('Presale: detected window.ethereum, attempting injected connect')
                 try {
                   await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
                   const provider = new ethers.providers.Web3Provider((window as any).ethereum)
@@ -185,16 +187,18 @@ export function PresaleWidget() {
                   const addr = await signer.getAddress()
                   setAccount(addr)
                   setIsConnected(true)
+                      console.info('Presale: injected connect succeeded', addr)
                       try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
                       try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                   return
                 } catch (e) {
-                  console.warn('Injected connect failed', e)
+                      console.warn('Presale: injected connect failed', e)
                 }
               }
 
               // Try WalletConnect Universal Provider as a fallback
               try {
+                console.info('Presale: attempting WalletConnect Universal Provider fallback')
                 const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
                 const UniversalProviderModule = await import('@walletconnect/universal-provider')
                 const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
@@ -213,6 +217,7 @@ export function PresaleWidget() {
                 if (addr) {
                   setAccount(addr)
                   setIsConnected(true)
+                  console.info('Presale: WalletConnect fallback succeeded', addr)
                     try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
                     try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
                 } else {
@@ -220,7 +225,7 @@ export function PresaleWidget() {
                 }
                 return
               } catch (e) {
-                console.warn('WalletConnect fallback failed', e)
+                console.warn('Presale: WalletConnect fallback failed', e)
               }
 
               alert('Wallet integration unavailable in this browser session')
