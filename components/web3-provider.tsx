@@ -12,7 +12,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     createConfig: (opts: any) => any
     injected: () => any
   } | null>(null)
-  const [loadError, setLoadError] = useState<boolean>(false)
 
   useEffect(() => {
     let mounted = true
@@ -27,7 +26,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         // If dynamic import fails, we fall back to rendering children without Wagmi.
         console.error("Failed to load wagmi on client:", e)
-        setLoadError(true)
       }
     })()
     return () => {
@@ -50,15 +48,9 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   // without a WagmiProvider which throws at runtime. Show a minimal placeholder
   // while wagmi is loading on the client.
   if (!impl || !provider) {
-    // If we failed to load wagmi (e.g. dynamic import error), stop blocking
-    // the entire app and render children unwrapped so the site doesn't show
-    // an empty page. This keeps the app usable even when wagmi cannot be
-    // initialized in the client environment.
-    if (loadError) {
-      return <>{children}</>
-    }
-
-    return <div aria-hidden="true" id="web3-loading" />
+    return (
+      <div aria-hidden="true" id="web3-loading" />
+    )
   }
 
   const WagmiConfig = impl.WagmiConfig
