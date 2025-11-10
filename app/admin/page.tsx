@@ -61,9 +61,10 @@ export default function AdminPage() {
     }
   }
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Admin — Pending Payments</h1>
+  try {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Admin — Pending Payments</h1>
       <div className="mb-4">
         <button onClick={fetchPayments} className="px-3 py-2 bg-primary text-white rounded">Refresh</button>
       </div>
@@ -109,6 +110,15 @@ export default function AdminPage() {
           ))}
         </tbody>
       </table>
-    </div>
-  )
+      </div>
+    )
+  } catch (e) {
+    console.error('AdminPage render error:', e)
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Admin — Pending Payments</h1>
+        <div className="p-4 bg-muted rounded">Admin data is unavailable during build. Please check logs.</div>
+      </div>
+    )
+  }
 }
