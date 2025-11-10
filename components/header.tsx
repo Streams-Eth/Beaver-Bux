@@ -11,29 +11,52 @@ export function Header() {
 
   const connectWallet = async () => {
     try {
-      // Check if MetaMask is installed
-      if (typeof window.ethereum !== 'undefined') {
-        // Request account access
-        const accounts = await window.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        })
-        
-        const accs = Array.isArray(accounts) ? accounts : []
-        if (accs.length > 0) {
-          // Shorten the address for display
-          const address = accs[0]
+      // Try injected provider (MetaMask) first
+      if (typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined') {
+        try {
+          const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
+          const accs = Array.isArray(accounts) ? accounts : []
+          if (accs.length > 0) {
+            const address = accs[0]
+            const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
+            setWalletAddress(shortened)
+            try { localStorage.setItem('bbux_wallet_address', address) } catch (e) {}
+            try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } })) } catch (e) {}
+            return
+          }
+        } catch (e) {
+          console.warn('Injected provider connection failed, will try WalletConnect fallback', e)
+        }
+      }
+
+      // If no injected provider (typical on mobile) or injected attempt failed,
+      // fall back to WalletConnect Universal Provider which handles mobile deep links.
+      try {
+        const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+        const UniversalProviderModule = await import('@walletconnect/universal-provider')
+        const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
+        const wc = await UniversalProvider.init({ projectId })
+        await wc.connect()
+        const accounts = (wc as any).accounts || (wc as any).session?.namespaces?.eip155?.accounts || []
+        let address: string | null = null
+        if (Array.isArray(accounts) && accounts.length > 0) {
+          const raw = accounts[0]
+          const parts = String(raw).split(':')
+          address = parts[parts.length - 1]
+        }
+        if (address) {
           const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
           setWalletAddress(shortened)
-          try {
-            // Persist raw address so other components can pick it up
-            localStorage.setItem('bbux_wallet_address', address)
-            // notify other components
-            window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } }))
-          } catch (e) {}
+          try { localStorage.setItem('bbux_wallet_address', address) } catch (e) {}
+          try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } })) } catch (e) {}
+          return
         }
-      } else {
-        alert('Please install MetaMask or another Web3 wallet!')
+      } catch (e) {
+        console.warn('WalletConnect fallback failed', e)
       }
+
+      // Nothing worked
+      alert('Please install MetaMask or connect via WalletConnect (mobile)')
     } catch (error) {
       console.error('Error connecting wallet:', error)
       alert('Failed to connect wallet. Please try again.')
