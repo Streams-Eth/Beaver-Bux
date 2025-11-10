@@ -75,10 +75,34 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       }
 
       if (connectors.length === 0) {
-        throw new Error('no connectors available')
+        // No connectors could be constructed -> don't attempt to create a wagmi config
+        console.warn('Web3Provider: no connectors available; skipping wagmi config')
+        try {
+          if (typeof window !== "undefined") (window as any).__WAGMI_READY = false
+        } catch (ee) {}
+        return null
       }
 
-      const cfg = impl.createConfig({ autoConnect: true, connectors })
+      // Validate connectors to avoid passing malformed values into createConfig
+      const bad = connectors.find((c) => !c || (typeof c !== 'object' && typeof c !== 'function'))
+      if (bad) {
+        console.warn('Web3Provider: found invalid connector, skipping wagmi config', bad)
+        try {
+          if (typeof window !== "undefined") (window as any).__WAGMI_READY = false
+        } catch (ee) {}
+        return null
+      }
+
+      let cfg: any = null
+      try {
+        cfg = impl.createConfig({ autoConnect: true, connectors })
+      } catch (createErr) {
+        console.error('Web3Provider: createConfig failed, skipping wagmi provider', createErr)
+        try {
+          if (typeof window !== "undefined") (window as any).__WAGMI_READY = false
+        } catch (ee) {}
+        return null
+      }
       try {
         // Mark global flag so client components can detect that a Wagmi
         // provider was successfully created. Some components render before
