@@ -85,7 +85,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-bold text-foreground mb-4">Removing Data</h2>
             <p className="leading-relaxed">
               If you would like us to delete any data we may hold on you, please contact us by emailing
-              admin@beaverbux.ca.
+              hello@beaverbux.ca.
             </p>
             <p className="leading-relaxed mt-4">
               Whereas we do not require personal or identifiable information upon signing up to use our service, we may
