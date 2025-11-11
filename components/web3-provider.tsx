@@ -210,7 +210,24 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           cfg = impl.createConfig({ autoConnect: true, connectors: adapters })
         } catch (innerErr) {
           console.warn('Web3Provider: createConfig with adapters failed, retrying with raw connectors', innerErr)
-          cfg = impl.createConfig({ autoConnect: true, connectors: finalConnectors })
+          try {
+            cfg = impl.createConfig({ autoConnect: true, connectors: finalConnectors })
+          } catch (rawErr) {
+            // Extra diagnostics: serialize connector shapes (keys, function names, prototype)
+            try {
+              const details = (finalConnectors || []).map((c: any, i: number) => {
+                const keys = [] as string[]
+                const fns = [] as string[]
+                try { Object.keys(c || {}).forEach(k => { keys.push(k); try { if (typeof (c as any)[k] === 'function') fns.push(k) } catch(e){} }) } catch(e){}
+                let protoName = null
+                try { const p = Object.getPrototypeOf(c); protoName = p && p.constructor && p.constructor.name } catch(e){}
+                return { index: i, id: (c && (c.id || c.name)) || null, type: typeof c, keys, fns, protoName }
+              })
+              try { document?.body?.setAttribute?.('data-wagmi-connectors-detailed', JSON.stringify(details)) } catch(e){}
+              console.error('Web3Provider: createConfig failed for raw connectors', rawErr, { details })
+            } catch (ee) {}
+            throw rawErr
+          }
         }
         if (!mounted) return
         setProviderConfig(cfg)
