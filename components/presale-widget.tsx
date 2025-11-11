@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { ethers } from 'ethers'
+import { normalizeAddress } from '@/lib/utils'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -154,10 +155,11 @@ export function PresaleWidget() {
     // Read header-based wallet connects (legacy path) so header connect updates
     // this widget even when wagmi isn't present. Header sets the raw address in
     // localStorage under 'bbux_wallet_address' and dispatches a custom event.
-    try {
+      try {
       const stored = localStorage.getItem('bbux_wallet_address')
       if (stored) {
-        setAccount(stored)
+        const norm = normalizeAddress(stored) || stored
+        setAccount(norm)
         setIsConnected(true)
       }
     } catch (e) {}
@@ -228,8 +230,8 @@ export function PresaleWidget() {
                   setAccount(addr)
                   setIsConnected(true)
                       addLog(`injected connect succeeded ${addr}`)
-                      try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
-                      try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
+                      try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+                      try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
                   return
                 } catch (e) {
                       addLog(`injected connect failed: ${String((e as any)?.message || e)}`)
@@ -279,8 +281,8 @@ export function PresaleWidget() {
                   setAccount(addr)
                   setIsConnected(true)
                   addLog(`WalletConnect fallback succeeded ${addr}`)
-                    try { localStorage.setItem('bbux_wallet_address', addr) } catch (e) {}
-                    try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: addr } })) } catch (e) {}
+                    try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+                    try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
                 } else {
                   alert('Connected, but could not read account address from WalletConnect provider')
                 }
@@ -322,7 +324,7 @@ export function PresaleWidget() {
     useEffect(() => {
       try {
         if (wagmiIsConnected && address) {
-          localStorage.setItem('bbux_wallet_address', address)
+          try { const norm = normalizeAddress(address) || address; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
           window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } }))
         } else {
           localStorage.removeItem('bbux_wallet_address')

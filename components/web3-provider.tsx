@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { normalizeAddress } from '@/lib/utils'
 
 // Client-only provider that dynamically imports wagmi and @wagmi/core
 // at runtime so no browser-dependent code runs during server build/prerender.
@@ -19,8 +20,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      try {
-        const [{ WagmiConfig }, core] = await Promise.all([
+  try {
+    const [{ WagmiConfig }, core] = await Promise.all([
           import('wagmi'),
           import('@wagmi/core'),
         ])
@@ -46,6 +47,25 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     return () => { mounted = false }
   }, [])
 
+  // Normalize any existing bbux_wallet_address in localStorage on client startup.
+  // If a stored address is not checksummed/normalized, replace it and broadcast
+  // a `bbux:wallet-changed` event so other parts of the UI pick up the change.
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return
+      const raw = localStorage.getItem('bbux_wallet_address')
+      if (!raw) return
+      const norm = normalizeAddress(raw) || raw
+      if (norm && norm !== raw) {
+        try { localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+        try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
+        console.info('Web3Provider: normalized stored bbux_wallet_address', { raw, norm })
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [])
+
   // When `impl` is ready, attempt to construct connectors explicitly and create
   // the wagmi config. Doing this async avoids depending on possibly-mismatched
   // factory exports and gives us control over connector construction.
@@ -53,7 +73,9 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     let mounted = true
     if (!impl) return
     ;(async () => {
-      const connectors: any[] = []
+  const connectors: any[] = []
+  // finalConnectors will be assigned after we attempt normalization
+  let finalConnectors: any[] = []
       const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
 
       // Try explicit InjectedConnector
@@ -82,9 +104,47 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
 
       // Diagnostics
       try {
-        const snapshot = connectors.map((c: any, i: number) => ({ index: i, type: typeof c, id: (c && (c.id || c.name)) || null, hasConnect: !!(c && (c.connect || c.connectAsync)) }))
+        // Normalize connectors: some impls return constructor functions or factories
+        const normalized: any[] = []
+        for (let i = 0; i < connectors.length; i++) {
+          const c = connectors[i]
+          if (!c) continue
+          try {
+            if (typeof c === 'function') {
+              // Try calling, then try `new`, then try calling with projectId as fallback
+              let inst: any = null
+              try { inst = c() } catch (e) { /* ignore */ }
+              if (!inst) {
+                try { inst = new (c as any)() } catch (e) { /* ignore */ }
+              }
+              if (!inst && typeof projectId !== 'undefined') {
+                try { inst = c({ projectId }) } catch (e) { /* ignore */ }
+              }
+              if (inst && (inst.connect || inst.connectAsync)) {
+                normalized.push(inst)
+                continue
+              }
+              // If still a function, push it through for diagnostics (we'll catch later)
+              normalized.push(c)
+              continue
+            }
+            if (typeof c === 'object') {
+              // Already an instance-like object
+              normalized.push(c)
+              continue
+            }
+            // otherwise push as-is
+            normalized.push(c)
+          } catch (e) {
+            console.warn('Web3Provider: error normalizing connector', e)
+          }
+        }
+
+        const snapshot = normalized.map((c: any, i: number) => ({ index: i, type: typeof c, id: (c && (c.id || c.name)) || null, hasConnect: !!(c && (c.connect || c.connectAsync)) }))
         console.info('Web3Provider: connectors snapshot', snapshot)
         try { document?.body?.setAttribute?.('data-wagmi-connectors', JSON.stringify(snapshot)) } catch (e) {}
+        // replace connectors with normalized set for createConfig
+        finalConnectors = normalized
       } catch (e) {}
 
       if (connectors.length === 0) {
@@ -93,7 +153,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      const bad = connectors.find((c) => !c || (typeof c !== 'object' && typeof c !== 'function'))
+      const bad = finalConnectors.find((c: any) => !c || (typeof c !== 'object' && typeof c !== 'function'))
       if (bad) {
         console.warn('Web3Provider: found invalid connector, skipping wagmi config', bad)
         try { if (typeof window !== 'undefined') (window as any).__WAGMI_READY = false } catch (e) {}
@@ -101,7 +161,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const cfg = impl.createConfig({ autoConnect: true, connectors })
+        const cfg = impl.createConfig({ autoConnect: true, connectors: finalConnectors })
         if (!mounted) return
         setProviderConfig(cfg)
         try { if (typeof window !== 'undefined') (window as any).__WAGMI_READY = true } catch (e) {}

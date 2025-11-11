@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { normalizeAddress } from "@/lib/utils"
 import { Menu, X } from "lucide-react"
 
 export function Header() {
@@ -17,7 +18,8 @@ export function Header() {
           const accounts = await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
           const accs = Array.isArray(accounts) ? accounts : []
           if (accs.length > 0) {
-            const address = accs[0]
+            const raw = accs[0]
+            const address = normalizeAddress(raw) || raw
             const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
             setWalletAddress(shortened)
             try { localStorage.setItem('bbux_wallet_address', address) } catch (e) {}
@@ -45,10 +47,11 @@ export function Header() {
           address = parts[parts.length - 1]
         }
         if (address) {
-          const shortened = `${address.slice(0, 6)}...${address.slice(-4)}`
+          const norm = normalizeAddress(address) || address
+          const shortened = `${norm.slice(0, 6)}...${norm.slice(-4)}`
           setWalletAddress(shortened)
-          try { localStorage.setItem('bbux_wallet_address', address) } catch (e) {}
-          try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } })) } catch (e) {}
+          try { localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+          try { window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
           return
         }
       } catch (e) {
