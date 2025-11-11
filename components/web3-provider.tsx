@@ -176,7 +176,42 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const cfg = impl.createConfig({ autoConnect: true, connectors: finalConnectors })
+        // Wrap connectors in a small adapter layer to ensure the shape
+        // createConfig expects (some wagmi builds return plain objects/functions)
+        const adapters = finalConnectors.map((c: any) => {
+          const id = (c && (c.id || c.name)) || 'unknown'
+          const name = (c && c.name) || id
+          return {
+            id,
+            name,
+            // prefer connectAsync if available
+            connectAsync: async (...args: any[]) => {
+              if (!c) throw new Error('no connector')
+              if (typeof c.connectAsync === 'function') return c.connectAsync(...args)
+              if (typeof c.connect === 'function') return c.connect(...args)
+              if (typeof c === 'function') return c(...args)
+              throw new Error('connector has no connect function')
+            },
+            connect: async (...args: any[]) => {
+              if (!c) throw new Error('no connector')
+              if (typeof c.connect === 'function') return c.connect(...args)
+              if (typeof c.connectAsync === 'function') return c.connectAsync(...args)
+              if (typeof c === 'function') return c(...args)
+              throw new Error('connector has no connect function')
+            },
+            disconnect: typeof c?.disconnect === 'function' ? (...a: any[]) => c.disconnect(...a) : undefined,
+            getProvider: typeof c?.getProvider === 'function' ? (...a: any[]) => c.getProvider(...a) : undefined,
+            getSigner: typeof c?.getSigner === 'function' ? (...a: any[]) => c.getSigner(...a) : undefined,
+          }
+        })
+        console.info('Web3Provider: connector adapters prepared', adapters.map((a: any) => ({ id: a.id, name: a.name })))
+        let cfg
+        try {
+          cfg = impl.createConfig({ autoConnect: true, connectors: adapters })
+        } catch (innerErr) {
+          console.warn('Web3Provider: createConfig with adapters failed, retrying with raw connectors', innerErr)
+          cfg = impl.createConfig({ autoConnect: true, connectors: finalConnectors })
+        }
         if (!mounted) return
         setProviderConfig(cfg)
         try { if (typeof window !== 'undefined') (window as any).__WAGMI_READY = true } catch (e) {}
