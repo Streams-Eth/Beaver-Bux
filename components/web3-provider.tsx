@@ -140,11 +140,26 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const snapshot = normalized.map((c: any, i: number) => ({ index: i, type: typeof c, id: (c && (c.id || c.name)) || null, hasConnect: !!(c && (c.connect || c.connectAsync)) }))
+        const snapshot = normalized.map((c: any, i: number) => {
+          let keys: string[] | null = null
+          try { if (c && typeof c === 'object') keys = Object.keys(c).slice(0, 8) } catch (e) {}
+          return {
+            index: i,
+            type: typeof c,
+            id: (c && (c.id || c.name)) || null,
+            hasConnect: !!(c && (c.connect || c.connectAsync)),
+            keys,
+          }
+        })
         console.info('Web3Provider: connectors snapshot', snapshot)
         try { document?.body?.setAttribute?.('data-wagmi-connectors', JSON.stringify(snapshot)) } catch (e) {}
         // replace connectors with normalized set for createConfig
-        finalConnectors = normalized
+        // Only keep items that look like connector instances (have connect/connectAsync)
+        const filtered = normalized.filter((c: any) => !!(c && (c.connect || c.connectAsync)))
+        if (filtered.length !== normalized.length) {
+          console.warn('Web3Provider: some connectors were dropped because they did not expose connect/connectAsync', { normalized, filtered })
+        }
+        finalConnectors = filtered
       } catch (e) {}
 
       if (connectors.length === 0) {
