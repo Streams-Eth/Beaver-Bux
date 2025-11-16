@@ -15,7 +15,7 @@ export function TokenomicsSection() {
     { label: "Total Supply", value: "1,000,000,000 BBUX" },
     { label: "Presale Allocation", value: "100M BBUX (10%)" },
     { label: "Liquidity & CEX", value: "200M BBUX (20%)" },
-    { label: "Blockchain", value: "Ethereum (ERC-20)" },
+    { label: "Blockchain", value: "Base (ERC-20)" },
   ]
 
   return (

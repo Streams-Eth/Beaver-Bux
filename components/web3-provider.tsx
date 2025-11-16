@@ -1,13 +1,19 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { QueryClientProvider } from '@tanstack/react-query'
 import { normalizeAddress } from '@/lib/utils'
 
 // Client-only provider that dynamically imports wagmi and @wagmi/core
 // at runtime so no browser-dependent code runs during server build/prerender.
 // This keeps the server bundles free of wallets code that expects window/localStorage.
 
-export function Web3Provider({ children }: { children: React.ReactNode }) {
+export function Web3Provider({ children, queryClient: passedQueryClient }: { children: React.ReactNode, queryClient?: any }) {
+  // Ensure we have a QueryClient instance to provide to react-query hooks.
+  // Prefer the QueryClient passed from app-level Providers so the same instance
+  // is shared across the app. If none is passed, create a local one.
+  const [internalQueryClient, setInternalQueryClient] = useState<any>(() => passedQueryClient || undefined)
+  const [internalRQModule, setInternalRQModule] = useState<any>(null)
   const [impl, setImpl] = useState<{
     WagmiConfig: any
     createConfig: (opts: any) => any
@@ -21,14 +27,18 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     let mounted = true
     ;(async () => {
       try {
-        const [{ WagmiConfig }, core] = await Promise.all([
-          import('wagmi'),
-          import('@wagmi/core'),
-        ])
+        // Import wagmi and @wagmi/core. Different builds may export members
+        // under default or named exports; be defensive about locating
+        // `WagmiConfig` and `createConfig`.
+      const wagmiMod = await import('wagmi')
+        const core = await import('@wagmi/core')
         if (!mounted) return
+        const WagmiConfig = wagmiMod.WagmiConfig || (wagmiMod as any).default?.WagmiConfig || (wagmiMod as any).default || wagmiMod
+        const createConfig = core.createConfig || (core as any).default?.createConfig || (core as any).createConfig
         const newImpl = {
           WagmiConfig,
-          createConfig: core.createConfig,
+          createConfig,
+          Context: wagmiMod.Context,
           injected: (core as any).injected,
           walletConnect: (core as any).walletConnect || (core as any).walletConnectConnector,
         }
@@ -81,8 +91,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       // Try explicit InjectedConnector
       try {
         // @ts-ignore - some wagmi builds don't expose typings for the deep import
-        const injectedMod = await import('wagmi/connectors/injected')
-        const InjectedConnector = injectedMod?.InjectedConnector || injectedMod?.default || injectedMod
+  const injectedMod = await import('wagmi/connectors/injected')
+  const InjectedConnector = injectedMod?.InjectedConnector || (injectedMod as any).default || injectedMod
         if (InjectedConnector) {
           try { connectors.push(new InjectedConnector({})) } catch (e) { console.warn('Web3Provider: failed to instantiate InjectedConnector', e) }
         }
@@ -93,8 +103,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       // Try explicit WalletConnect connector
       try {
         // @ts-ignore - some wagmi builds don't expose typings for the deep import
-        const wcMod = await import('wagmi/connectors/walletConnect')
-        const WalletConnectConnector = wcMod?.WalletConnectConnector || wcMod?.default || wcMod
+  const wcMod = await import('wagmi/connectors/walletConnect')
+  const WalletConnectConnector = wcMod?.WalletConnectConnector || (wcMod as any).default || wcMod
         if (WalletConnectConnector && projectId) {
           try { connectors.push(new WalletConnectConnector({ options: { projectId } })) } catch (e) { console.warn('Web3Provider: failed to instantiate WalletConnectConnector', e) }
         }
@@ -185,7 +195,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
           const id = (c && (c.id || c.name)) || 'unknown'
           const name = (c && c.name) || id
           // Return a factory function with the expected signature
-          return (params: any) => {
+          const factory: any = (params: any) => {
             // If the candidate already looks like a factory (function), try to call it
             if (typeof c === 'function') {
               try {
@@ -227,13 +237,62 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
               rdns: c?.rdns,
               supportsSimulation: c?.supportsSimulation,
             }
+            // Provide a minimal setStorage implementation expected by some wagmi versions
+            // If the underlying connector supports setStorage, forward to it. Otherwise
+            // store the storage object locally so other wrapper methods can access it.
+            try {
+              wrapper.setStorage = (s: any) => {
+                try {
+                  if (c && typeof c.setStorage === 'function') return c.setStorage(s)
+                } catch (e) {}
+                ;(wrapper as any)._storage = s
+              }
+            } catch (e) {}
+            // If the factory previously received a storage object, populate wrapper
+            try {
+              if ((factory as any)._storage) {
+                ;(wrapper as any)._storage = (factory as any)._storage
+              }
+            } catch (e) {}
             return wrapper
           }
+          // Some wagmi versions call setStorage on the connector *factory* itself
+          // before invoking it. Provide that API and forward to underlying connector
+          // or stash the storage on the factory for later when wrapper is created.
+          try {
+            factory.setStorage = (s: any) => {
+              try {
+                if (c && typeof c.setStorage === 'function') return c.setStorage(s)
+              } catch (e) {}
+              ;(factory as any)._storage = s
+            }
+          } catch (e) {}
+          return factory
         })
         console.info('Web3Provider: connector factories prepared', connectorFns.map((f: any, i: number) => ({ index: i })))
         let cfg
         try {
-          cfg = impl.createConfig({ autoConnect: true, connectors: connectorFns })
+          // Some wagmi builds expect a QueryClient instance passed into createConfig
+          // to populate react-query context used by wagmi hooks. Dynamically import
+          // @tanstack/react-query here so we use the same runtime copy and avoid
+          // "No QueryClient set" errors (or mismatched instances).
+          let queryClient: any = undefined
+          // Only use the QueryClient passed from the app to avoid module mismatches
+          if (passedQueryClient) {
+            queryClient = passedQueryClient
+            console.debug('Web3Provider: using app-provided QueryClient')
+          } else {
+            console.warn('Web3Provider: no app QueryClient provided, creating config without queryClient')
+          }
+          const cfgOpts: any = { autoConnect: true, connectors: connectorFns }
+          // Prefer a QueryClient passed from the app-level Providers to ensure a
+          // single react-query instance is shared across the app and wagmi.
+          if (passedQueryClient) cfgOpts.queryClient = passedQueryClient
+          else if (queryClient) cfgOpts.queryClient = queryClient
+          try {
+            console.debug('Web3Provider: createConfig cfgOpts queryClient present?', !!cfgOpts.queryClient, cfgOpts.queryClient && cfgOpts.queryClient.constructor && cfgOpts.queryClient.constructor.name)
+          } catch (e) {}
+          cfg = impl.createConfig(cfgOpts)
         } catch (rawErr) {
             // Extra diagnostics: serialize connector shapes (keys, function names, prototype)
             try {
@@ -281,6 +340,117 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  const WagmiConfig = impl.WagmiConfig
-  return <WagmiConfig config={providerConfig}>{children}</WagmiConfig>
+  // Resolve possible module shapes for WagmiConfig (named export, default export,
+  // or wrapped module). Be defensive because different bundlings expose members
+  // differently. Prefer using the exported `Context.Provider` when available
+  // because it is a stable React context object and avoids calling into a
+  // wrapper component that may have bundler-specific expectations.
+  let WagmiConfig: any = impl.WagmiConfig
+  try {
+    if (!WagmiConfig) {
+      // try fallback locations
+      WagmiConfig = (impl as any).WagmiConfig || (impl as any).default || (impl as any)
+    }
+    // If it's a module namespace with .default or nested WagmiConfig, prefer that
+    if (WagmiConfig && typeof WagmiConfig === 'object') {
+      WagmiConfig = WagmiConfig.WagmiConfig || WagmiConfig.default || WagmiConfig
+    }
+  } catch (e) {
+    console.warn('Web3Provider: unable to normalize WagmiConfig', e)
+  }
+
+  // Prefer rendering the bundled WagmiConfig component when available. Wagmi's
+  // `WagmiConfig` mounts internal providers (including react-query's
+  // QueryClientProvider) that wagmi's hooks expect. Falling back to
+  // rendering `Context.Provider` alone is unsafe because it doesn't set up
+  // react-query context; in that case we attempt to wrap the Context with the
+  // react-query QueryClientProvider using the QueryClient from the provider
+  // config (if present).
+  try {
+    try {
+      console.debug('Web3Provider: WagmiConfig type:', typeof WagmiConfig)
+      console.debug('Web3Provider: WagmiConfig:', WagmiConfig)
+      console.debug('Web3Provider: providerConfig keys:', providerConfig && Object.keys(providerConfig || {}))
+      console.debug('Web3Provider: impl keys:', impl && Object.keys(impl || {}))
+    } catch (logErr) {
+      /* ignore logging errors */
+    }
+    // Prefer WagmiConfig component (it often sets up internal react-query
+    // provider). Wrap it in the app's QueryClientProvider to ensure the
+    // react-query context available to wagmi hooks is the same instance the
+    // rest of the app uses. This avoids "No QueryClient set" and mismatch
+    // issues when wagmi and the app otherwise end up using different
+    // react-query instances.
+    if (WagmiConfig && (typeof WagmiConfig === 'function' || typeof WagmiConfig === 'object')) {
+      // Only use the app-provided QueryClient to avoid module mismatches
+      const qc = passedQueryClient
+      
+      if (!qc) {
+        console.warn('Web3Provider: no app QueryClient available, rendering children without wagmi')
+        return <>{children}</>
+      }
+      try {
+        try { console.debug('Web3Provider: wrapping WagmiConfig with QueryClient of type', qc && qc.constructor && qc.constructor.name) } catch (e) {}
+        try { console.debug('Web3Provider: queryClient keys', Object.keys(qc || {}).slice(0,20)) } catch (e) {}
+        try { console.debug('Web3Provider: queryClient.mount exists?', !!(qc as any)?.mount) } catch (e) {}
+      } catch (e) {}
+
+      // Use the static QueryClientProvider (imported at top of file) since we're only
+      // using the app-provided QueryClient which comes from the same module
+      console.debug('Web3Provider: using static QueryClientProvider')
+
+      // Final safety check before rendering
+      try {
+        if (!qc || typeof qc !== 'object' || !qc.constructor) {
+          console.warn('Web3Provider: Final safety check failed, rendering without wagmi provider', {
+            hasQc: !!qc,
+            qcType: typeof qc,
+            hasConstructor: !!(qc && qc.constructor)
+          })
+          return <>{children}</>
+        }
+      } catch (e) {
+        console.warn('Web3Provider: Final safety check threw error, rendering without wagmi provider', e)
+        return <>{children}</>
+      }
+
+      // Wrap the wagmi rendering in try-catch to prevent mount errors from crashing the app
+      try {
+        console.debug('Web3Provider: attempting to render WagmiConfig with QueryClientProvider')
+        return (
+          <QueryClientProvider client={qc}>
+            <WagmiConfig config={providerConfig}>{children}</WagmiConfig>
+          </QueryClientProvider>
+        )
+      } catch (renderError) {
+        console.error('Web3Provider: failed to render WagmiConfig due to QueryClient mount error, falling back to children only', renderError)
+        return <>{children}</>
+      }
+    }
+
+    // If WagmiConfig isn't available, try to render Context.Provider but
+    // ensure a QueryClientProvider wraps it if wagmi created one in its args.
+    if (impl && (impl as any).Context && (impl as any).Context.Provider) {
+      const Provider = (impl as any).Context.Provider
+      // providerConfig may include the queryClient under .args.queryClient
+      const maybeQueryClient = providerConfig && providerConfig.args && providerConfig.args.queryClient
+      if (maybeQueryClient) {
+        return (
+          <QueryClientProvider client={maybeQueryClient}>
+            <Provider value={providerConfig}>{children}</Provider>
+          </QueryClientProvider>
+        )
+      }
+      return <Provider value={providerConfig}>{children}</Provider>
+    }
+
+    console.warn('Web3Provider: no valid wagmi provider found, rendering children without Wagmi')
+    return <>{children}</>
+  } catch (e) {
+    console.error('Web3Provider: failed to render wagmi provider, falling back to children', e)
+    try { console.error('Web3Provider: WagmiConfig value (raw):', WagmiConfig) } catch (ee) {}
+    try { console.error('Web3Provider: providerConfig (raw):', providerConfig) } catch (ee) {}
+    try { console.error('Web3Provider: impl (raw):', impl) } catch (ee) {}
+    return <>{children}</>
+  }
 }

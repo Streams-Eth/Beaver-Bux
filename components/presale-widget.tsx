@@ -3,47 +3,80 @@
 import { useState, useEffect, useRef } from "react"
 import { ethers } from 'ethers'
 import { normalizeAddress } from '@/lib/utils'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import dynamic from 'next/dynamic'
+const WalletControlsInner = dynamic(() => import('@/components/wallet-controls-inner'), { ssr: false })
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Wallet } from "lucide-react"
 
-const PRESALE_CONTRACT = "0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564"
+// Network-aware contract addresses
+const getNetworkConfig = () => {
+  const network = process.env.NEXT_PUBLIC_NETWORK || 'mainnet'
+  
+  const configs = {
+    sepolia: {
+      token: process.env.NEXT_PUBLIC_SEPOLIA_TOKEN || '',
+      presale: process.env.NEXT_PUBLIC_SEPOLIA_PRESALE || '',
+      chainId: 11155111,
+      rpcUrl: process.env.NEXT_PUBLIC_SEPOLIA_RPC || 'https://sepolia.infura.io/v3/',
+      explorerUrl: 'https://sepolia.etherscan.io',
+    },
+    base: {
+      token: process.env.NEXT_PUBLIC_BASE_TOKEN || '',
+      presale: process.env.NEXT_PUBLIC_BASE_PRESALE || '',
+      chainId: 8453,
+      rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC || 'https://mainnet.base.org',
+      explorerUrl: 'https://basescan.org',
+    },
+    mainnet: {
+      token: process.env.NEXT_PUBLIC_ETH_TOKEN || '0xa7372d8409805D0D3F0Eb774B9bC8b7975340682',
+      presale: process.env.NEXT_PUBLIC_ETH_PRESALE || '0x45482E0858689E2dDd8F4bAEB95d4Fd5f292c564',
+      chainId: 1,
+      rpcUrl: process.env.NEXT_PUBLIC_ETH_RPC || 'https://eth-mainnet.g.alchemy.com/v2/',
+      explorerUrl: 'https://etherscan.io',
+    },
+  }
+  
+  return configs[network as keyof typeof configs] || configs.mainnet
+}
+
+const NETWORK_CONFIG = getNetworkConfig()
+const PRESALE_CONTRACT = NETWORK_CONFIG.presale
 const MIN_CONTRIBUTION_ETH = 0.0005
 const MAX_CONTRIBUTION_ETH = 0.25
 const TOTAL_TOKENS_FOR_SALE = 100_000_000
 
-// Stage configuration from contract
+// Stage configuration from contract (869,565 BBUX per ETH = 0.00000115 ETH per BBUX)
 const STAGES = [
   {
     id: 1,
-    start: new Date("2025-11-01T00:00:00Z"),
-    end: new Date("2025-11-30T23:59:59Z"),
-    pricePerToken: 0.0000005, // ETH per BBUX
-    allocation: 30_000_000,
+    start: new Date("2025-11-16T00:00:00Z"),
+    end: new Date("2026-03-31T23:59:59Z"),
+    pricePerToken: 0.00000115, // ETH per BBUX (1 / 869565)
+    allocation: 5_000_000, // Stage 1: 5 ETH hard cap × 869,565
   },
   {
     id: 2,
-    start: new Date("2025-12-01T00:00:00Z"),
-    end: new Date("2025-12-31T23:59:59Z"),
-    pricePerToken: 0.0000006,
-    allocation: 30_000_000,
+    start: new Date("2026-04-01T00:00:00Z"),
+    end: new Date("2026-06-30T23:59:59Z"),
+    pricePerToken: 0.00000115,
+    allocation: 8_000_000, // Stage 2: 8 ETH hard cap × 869,565
   },
   {
     id: 3,
-    start: new Date("2026-01-01T00:00:00Z"),
-    end: new Date("2026-01-31T23:59:59Z"),
-    pricePerToken: 0.0000007,
-    allocation: 20_000_000,
+    start: new Date("2026-07-01T00:00:00Z"),
+    end: new Date("2026-09-28T23:59:59Z"),
+    pricePerToken: 0.00000115,
+    allocation: 15_000_000, // Stage 3: 15 ETH hard cap × 869,565
   },
   {
     id: 4,
-    start: new Date("2026-02-01T00:00:00Z"),
-    end: new Date("2026-02-28T23:59:59Z"),
-    pricePerToken: 0.0000008,
-    allocation: 20_000_000,
+    start: new Date("2026-09-29T00:00:00Z"),
+    end: new Date("2026-12-27T23:59:59Z"),
+    pricePerToken: 0.00000115,
+    allocation: 20_000_000, // Stage 4: 20 ETH hard cap × 869,565
   },
 ]
 
@@ -65,6 +98,10 @@ export function PresaleWidget() {
   }
   const wcRef = useRef<any>(null)
   const prefetchingRef = useRef(false)
+  const paypalRef = useRef<HTMLDivElement>(null)
+  const [currentStage, setCurrentStage] = useState(STAGES[0])
+  const [nextStage, setNextStage] = useState(STAGES[1])
+  const [countdown, setCountdown] = useState("")
 
   const prefetchWalletConnect = async () => {
     if (typeof window === 'undefined' || prefetchingRef.current) return
@@ -80,7 +117,7 @@ export function PresaleWidget() {
         metadata: {
           name: 'Beaver Bux',
           description: 'Beaver Bux Presale',
-          url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaverbux.ca',
+          url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
           icons: [],
         },
       })
@@ -91,102 +128,6 @@ export function PresaleWidget() {
       prefetchingRef.current = false
     }
   }
-  // Wagmi hooks are used inside WalletControls which is only rendered when
-  // the Wagmi provider is available (see window.__WAGMI_READY set by the
-  // Web3Provider). This avoids calling wagmi hooks when the provider is not
-  // present which would throw `useConfig must be used within WagmiProvider`.
-  const [currentStage, setCurrentStage] = useState(STAGES[0])
-  const [nextStage, setNextStage] = useState(STAGES[1])
-  const paypalRef = useRef<HTMLDivElement>(null)
-  const [countdown, setCountdown] = useState("")
-
-  useEffect(() => {
-    const targetDate = new Date("2025-11-01T00:00:00Z").getTime()
-
-    const updateCountdown = () => {
-      const now = new Date().getTime()
-      const distance = targetDate - now
-
-      if (distance < 0) {
-        setCountdown("🚀 Presale is now LIVE!")
-        return
-      }
-
-      const days = Math.floor(distance / (1000 * 60 * 60 * 24))
-      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
-      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
-
-      setCountdown(`⏳ ${days}d ${hours}h ${minutes}m ${seconds}s until presale starts`)
-    }
-
-    updateCountdown()
-    const interval = setInterval(updateCountdown, 1000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    // Auto-save ?claim=bbux-claim-... into localStorage so PayPal orders include it
-    try {
-      const qp = new URLSearchParams(window.location.search)
-      const q = qp.get('claim')
-      if (q) {
-        try {
-          localStorage.setItem('bbux_claim_token', q)
-        } catch (e) {
-          // ignore storage errors
-        }
-      }
-    } catch (e) {
-      // ignore URL parsing errors (server render etc.)
-    }
-
-    const now = new Date()
-    const active = STAGES.find((stage) => now >= stage.start && now <= stage.end)
-    if (active) {
-      setCurrentStage(active)
-      const nextIndex = STAGES.findIndex((s) => s.id === active.id) + 1
-      if (nextIndex < STAGES.length) {
-        setNextStage(STAGES[nextIndex])
-      }
-    }
-
-    // Read header-based wallet connects (legacy path) so header connect updates
-    // this widget even when wagmi isn't present. Header sets the raw address in
-    // localStorage under 'bbux_wallet_address' and dispatches a custom event.
-      try {
-      const stored = localStorage.getItem('bbux_wallet_address')
-      if (stored) {
-        const norm = normalizeAddress(stored) || stored
-        setAccount(norm)
-        setIsConnected(true)
-      }
-    } catch (e) {}
-
-    const onWalletChanged = (ev: any) => {
-      try {
-        const addr = ev?.detail?.address || null
-        if (addr) {
-          setAccount(addr)
-          setIsConnected(true)
-        } else {
-          setAccount(null)
-          setIsConnected(false)
-        }
-      } catch (e) {}
-    }
-
-    try {
-      window.addEventListener('bbux:wallet-changed', onWalletChanged as EventListener)
-    } catch (e) {}
-
-    return () => {
-      try {
-        window.removeEventListener('bbux:wallet-changed', onWalletChanged as EventListener)
-      } catch (e) {}
-    }
-  }, [])
 
   const calculateTokens = (ethAmount: number) => {
     return ethAmount / currentStage.pricePerToken
@@ -194,233 +135,6 @@ export function PresaleWidget() {
 
   const tokensToReceive = amount ? calculateTokens(Number.parseFloat(amount)) : 0
   const cadEquivalent = amount ? Number.parseFloat(amount) * ETH_TO_CAD : 0
-
-  // Inner wallet-aware UI. This component uses wagmi hooks and MUST only be
-  // rendered when the Wagmi provider is available. We rely on the global
-  // flag `window.__WAGMI_READY` which is set by `Web3Provider` when the
-  // provider is successfully created.
-  function WalletControls({
-    amount,
-    tokensToReceive,
-  }: {
-    amount: string
-    tokensToReceive: number
-  }) {
-    // Only render wagmi UI when provider ready. If wagmi isn't available
-    // attempt a lightweight fallback: prefer injected provider (MetaMask/etc.)
-    // and fall back to WalletConnect Universal Provider when possible.
-    if (typeof window === 'undefined' || !(window as any).__WAGMI_READY) return (
-      <div className="flex gap-2">
-        <Button
-          className="flex-1 bg-primary text-primary-foreground text-lg py-6"
-          onPointerEnter={prefetchWalletConnect}
-          onMouseEnter={prefetchWalletConnect}
-          onTouchStart={prefetchWalletConnect}
-          onClick={async () => {
-            try {
-                  addLog('fallback connect clicked')
-              // Try injected provider first
-              if (typeof window !== 'undefined' && (window as any).ethereum) {
-                    addLog('detected window.ethereum, attempting injected connect')
-                try {
-                  await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
-                  const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-                  const signer = provider.getSigner()
-                  const addr = await signer.getAddress()
-                  setAccount(addr)
-                  setIsConnected(true)
-                      addLog(`injected connect succeeded ${addr}`)
-                      try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
-                      try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
-                  return
-                } catch (e) {
-                      addLog(`injected connect failed: ${String((e as any)?.message || e)}`)
-                }
-              }
-
-              // Try WalletConnect Universal Provider as a fallback
-              try {
-                addLog('attempting WalletConnect Universal Provider fallback')
-                // If we pre-initialized provider on hover/touch, reuse it so connect()
-                // runs inside a user gesture and avoids popup blocking. If it's not
-                // present, initialize now.
-                let wc = wcRef.current
-                if (!wc) {
-                  addLog('no preinitialized WalletConnect found; initializing now')
-                  const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
-                  const UniversalProviderModule = await import('@walletconnect/universal-provider')
-                  const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
-                  wc = await UniversalProvider.init({
-                    projectId,
-                    metadata: {
-                      name: 'Beaver Bux',
-                      description: 'Beaver Bux Presale',
-                      url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
-                      icons: [],
-                    },
-                  })
-                }
-                // prompt connection and handle errors explicitly
-                try {
-                  await wc.connect()
-                } catch (connectErr) {
-                  addLog(`WalletConnect connect() failed: ${String((connectErr as any)?.message || connectErr)}`)
-                  alert('WalletConnect failed to open. If you are on mobile, ensure your wallet app supports WalletConnect and try again.')
-                  return
-                }
-                // attempt to read accounts (structure may vary)
-                const accounts = (wc as any).accounts || (wc as any).session?.namespaces?.eip155?.accounts || []
-                let addr: string | null = null
-                if (Array.isArray(accounts) && accounts.length > 0) {
-                  // accounts sometimes are in the form 'eip155:1:0xabc...'
-                  const raw = accounts[0]
-                  const parts = String(raw).split(':')
-                  addr = parts[parts.length - 1]
-                }
-                if (addr) {
-                  setAccount(addr)
-                  setIsConnected(true)
-                  addLog(`WalletConnect fallback succeeded ${addr}`)
-                    try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
-                    try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
-                } else {
-                  alert('Connected, but could not read account address from WalletConnect provider')
-                }
-                return
-              } catch (e) {
-                addLog(`WalletConnect fallback failed: ${String((e as any)?.message || e)}`)
-              }
-
-              alert('Wallet integration unavailable in this browser session')
-            } catch (e) {
-              console.error('Fallback connect error', e)
-              alert('Failed to connect wallet')
-            }
-          }}
-        >
-          <Wallet className="mr-2" size={20} />
-          Connect Wallet
-        </Button>
-      </div>
-    )
-
-    const { address, isConnected: wagmiIsConnected } = useAccount()
-    const { connect, connectors } = useConnect()
-    const { disconnect } = useDisconnect()
-
-    // sync wagmi account state to local state
-    useEffect(() => {
-      if (wagmiIsConnected && address) {
-        setAccount(address)
-        setIsConnected(true)
-      } else {
-        setAccount(null)
-        setIsConnected(false)
-      }
-    }, [wagmiIsConnected, address])
-
-    // mirror wagmi connects/disconnects to localStorage and broadcast so header
-    // and other components stay in sync when wagmi is used here.
-    useEffect(() => {
-      try {
-        if (wagmiIsConnected && address) {
-          try { const norm = normalizeAddress(address) || address; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
-          window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address } }))
-        } else {
-          localStorage.removeItem('bbux_wallet_address')
-          window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
-        }
-      } catch (e) {}
-    }, [wagmiIsConnected, address])
-
-    return (
-      <div className="flex gap-2">
-        {!isConnected ? (
-          <Button
-            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 text-lg py-6"
-            onClick={async () => {
-              try {
-                // prefer injected connector if available, otherwise open first connector (WalletConnect)
-                const injected = connectors.find((c: any) => c.id === 'injected')
-                const connectorToUse = injected || connectors[0]
-                await connect({ connector: connectorToUse })
-              } catch (e) {
-                console.error('Wallet connect error:', e)
-                alert('Failed to connect wallet')
-              }
-            }}
-          >
-            <Wallet className="mr-2" size={20} />
-            Connect Wallet
-          </Button>
-        ) : (
-          <>
-            <Button
-              className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
-              disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
-              onClick={async () => {
-                // Use injected provider's signer via ethers (window.ethereum)
-                if (typeof window === 'undefined' || !(window as any).ethereum) {
-                  alert('Wallet not connected')
-                  return
-                }
-
-                const ethAmount = Number.parseFloat(amount || '0')
-                if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
-                  alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
-                  return
-                }
-
-                try {
-                  const provider = new ethers.providers.Web3Provider((window as any).ethereum)
-                  const signer = provider.getSigner()
-                  const tx = await signer.sendTransaction({
-                    to: PRESALE_CONTRACT,
-                    value: ethers.utils.parseEther(String(ethAmount)),
-                  })
-                  console.log('[v0] Payment tx sent', tx.hash)
-                  alert(`Transaction sent: ${tx.hash}. You will receive ${tokensToReceive.toLocaleString()} BBUX once confirmed.`)
-                  try {
-                    const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
-                    stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive })
-                    localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
-                  } catch (e) {
-                    // ignore
-                  }
-                } catch (e) {
-                  console.error('Buy error', e)
-                  alert('Failed to send transaction')
-                }
-              }}
-            >
-              Buy BBUX
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="px-4 py-6 border rounded text-sm"
-              onClick={() => {
-                // delegate to wagmi disconnect if available, otherwise clear local state
-                try {
-                  disconnect?.()
-                } catch (e) {}
-                try {
-                  localStorage.removeItem('bbux_wallet_address')
-                } catch (e) {}
-                try {
-                  window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
-                } catch (e) {}
-                setAccount(null)
-                setIsConnected(false)
-              }}
-            >
-              Disconnect ({account ? `${account.slice(0,6)}...${account.slice(-4)}` : '—'})
-            </Button>
-          </>
-        )}
-      </div>
-    )
-  }
 
   useEffect(() => {
     // Require wallet connect for PayPal purchases: buyer must connect a wallet first
@@ -506,6 +220,72 @@ export function PresaleWidget() {
         .render(paypalRef.current)
     }
   }, [amount, tokensToReceive, isConnected, account])
+
+  useEffect(() => {
+    const targetDate = new Date("2025-11-01T00:00:00Z").getTime()
+
+    const updateCountdown = () => {
+      const now = new Date().getTime()
+      const distance = targetDate - now
+
+      if (distance < 0) {
+        setCountdown("🚀 Presale is now LIVE!")
+        return
+      }
+
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000)
+
+      setCountdown(`⏳ ${days}d ${hours}h ${minutes}m ${seconds}s until presale starts`)
+    }
+
+    updateCountdown()
+    const interval = setInterval(updateCountdown, 1000)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    try {
+      const now = new Date()
+      const active = STAGES.find((stage) => now >= stage.start && now <= stage.end) || STAGES[0]
+      setCurrentStage(active)
+      const nextIndex = STAGES.findIndex((s) => s.id === active.id) + 1
+      if (nextIndex < STAGES.length) setNextStage(STAGES[nextIndex])
+    } catch (e) {}
+
+    try {
+      const stored = localStorage.getItem('bbux_wallet_address')
+      if (stored) {
+        const norm = normalizeAddress(stored) || stored
+        setAccount(norm)
+        setIsConnected(true)
+      }
+    } catch (e) {}
+
+    const onWalletChanged = (ev: any) => {
+      try {
+        const addr = ev?.detail?.address || null
+        if (addr) {
+          setAccount(addr)
+          setIsConnected(true)
+        } else {
+          setAccount(null)
+          setIsConnected(false)
+        }
+      } catch (e) {}
+    }
+
+    try {
+      window.addEventListener('bbux:wallet-changed', onWalletChanged as EventListener)
+    } catch (e) {}
+
+    return () => {
+      try { window.removeEventListener('bbux:wallet-changed', onWalletChanged as EventListener) } catch (e) {}
+    }
+  }, [])
 
   return (
     <Card className="w-full max-w-md bg-card border-2 border-primary/20 shadow-xl">
@@ -648,7 +428,216 @@ export function PresaleWidget() {
         </Tabs>
 
         {/* Action Buttons (wallet-aware) */}
-        <WalletControls amount={amount} tokensToReceive={tokensToReceive} />
+        {(() => {
+          // Only consider the wallet-ready gate true when the wagmi *provider*
+          // is fully created and the app-level QueryClientProvider has mounted.
+          // Previously we used __WAGMI_READY which can be set earlier during
+          // connector discovery; that allowed components using wagmi hooks to
+          // mount before the actual provider (and QueryClient) were available,
+          // causing "No QueryClient set" runtime errors. Use
+          // __WAGMI_PROVIDER_READY which is set when providerConfig is created.
+          const Ready =
+            typeof window !== 'undefined' &&
+            (window as any).__WAGMI_PROVIDER_READY &&
+            (window as any).__BBUX_QUERY_CLIENT
+          if (!Ready) {
+            // Fallback UI when wagmi is not available - show connect or buy buttons
+            if (!isConnected || !account) {
+              // Show connect button
+              return (
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-primary text-primary-foreground text-lg py-6"
+                    onPointerEnter={prefetchWalletConnect}
+                    onMouseEnter={prefetchWalletConnect}
+                    onTouchStart={prefetchWalletConnect}
+                    onClick={async () => {
+                      try {
+                        addLog('fallback connect clicked')
+                        // Try injected provider first
+                        if (typeof window !== 'undefined' && (window as any).ethereum) {
+                          addLog('detected window.ethereum, attempting injected connect')
+                          try {
+                            await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
+                            const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+                            const signer = provider.getSigner()
+                            const addr = await signer.getAddress()
+                            setAccount(addr)
+                            setIsConnected(true)
+                            addLog(`injected connect succeeded ${addr}`)
+                            try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+                            try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
+                            return
+                          } catch (e) {
+                            addLog(`injected connect failed: ${String((e as any)?.message || e)}`)
+                          }
+                        }
+
+                        // Try WalletConnect Universal Provider as a fallback
+                        try {
+                          addLog('attempting WalletConnect Universal Provider fallback')
+                          let wc = wcRef.current
+                          if (!wc) {
+                            addLog('no preinitialized WalletConnect found; initializing now')
+                            const projectId = (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string) || 'de11ba5f58d1e55215339c2ebec078ac'
+                            const UniversalProviderModule = await import('@walletconnect/universal-provider')
+                            const UniversalProvider = (UniversalProviderModule as any).default || UniversalProviderModule
+                            wc = await UniversalProvider.init({
+                              projectId,
+                              metadata: {
+                                name: 'Beaver Bux',
+                                description: 'Beaver Bux Presale',
+                                url: (typeof window !== 'undefined' && window.location.origin) || 'https://beaver-bux.xyz',
+                                icons: [],
+                              },
+                            })
+                            wcRef.current = wc
+                          }
+                          try {
+                            await wc.connect()
+                          } catch (connectErr) {
+                            addLog(`WalletConnect connect() failed: ${String((connectErr as any)?.message || connectErr)}`)
+                            alert('WalletConnect failed to open. If you are on mobile, ensure your wallet app supports WalletConnect and try again.')
+                            return
+                          }
+                          const accounts = (wc as any).accounts || (wc as any).session?.namespaces?.eip155?.accounts || []
+                          let addr: string | null = null
+                          if (Array.isArray(accounts) && accounts.length > 0) {
+                            const raw = accounts[0]
+                            const parts = String(raw).split(':')
+                            addr = parts[parts.length - 1]
+                          }
+                          if (addr) {
+                            setAccount(addr)
+                            setIsConnected(true)
+                            addLog(`WalletConnect fallback succeeded ${addr}`)
+                            try { const norm = normalizeAddress(addr) || addr; localStorage.setItem('bbux_wallet_address', norm) } catch (e) {}
+                            try { const norm = normalizeAddress(addr) || addr; window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: norm } })) } catch (e) {}
+                          } else {
+                            alert('Connected, but could not read account address from WalletConnect provider')
+                          }
+                          return
+                        } catch (e) {
+                          addLog(`WalletConnect fallback failed: ${String((e as any)?.message || e)}`)
+                        }
+
+                        alert('Wallet integration unavailable in this browser session')
+                      } catch (e) {
+                        console.error('Fallback connect error', e)
+                        alert('Failed to connect wallet')
+                      }
+                    }}
+                  >
+                    <Wallet className="mr-2" size={20} />
+                    Connect Wallet
+                  </Button>
+                </div>
+              )
+            }
+            
+            // Connected - show buy and disconnect buttons
+            return (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 text-lg py-6"
+                    disabled={!amount || Number.parseFloat(amount) < MIN_CONTRIBUTION_ETH}
+                    onClick={async () => {
+                      if (typeof window === 'undefined' || !(window as any).ethereum) {
+                        alert('Wallet not connected')
+                        return
+                      }
+
+                      const ethAmount = Number.parseFloat(amount || '0')
+                      if (!ethAmount || ethAmount < MIN_CONTRIBUTION_ETH) {
+                        alert(`Enter an amount (min ${MIN_CONTRIBUTION_ETH} ETH)`)
+                        return
+                      }
+
+                      try {
+                        addLog(`attempting buy: ${ethAmount} ETH to ${PRESALE_CONTRACT}`)
+                        const provider = new ethers.providers.Web3Provider((window as any).ethereum)
+                        const signer = provider.getSigner()
+                        
+                        // Check network
+                        const network = await provider.getNetwork()
+                        addLog(`current network: ${network.chainId}`)
+                        if (network.chainId !== NETWORK_CONFIG.chainId) {
+                          alert(`Please switch to ${NETWORK_CONFIG.chainId === 11155111 ? 'Sepolia' : NETWORK_CONFIG.chainId === 8453 ? 'Base' : 'Ethereum'} network in your wallet`)
+                          try {
+                            await (window as any).ethereum.request({
+                              method: 'wallet_switchEthereumChain',
+                              params: [{ chainId: `0x${NETWORK_CONFIG.chainId.toString(16)}` }],
+                            })
+                          } catch (switchError: any) {
+                            if (switchError.code === 4902) {
+                              alert('Please add this network to your wallet first')
+                            }
+                            return
+                          }
+                        }
+                        
+                        // Call buy() function on presale contract
+                        const presaleABI = ['function buy() payable']
+                        const presaleContract = new ethers.Contract(PRESALE_CONTRACT, presaleABI, signer)
+                        const tx = await presaleContract.buy({ value: ethers.utils.parseEther(String(ethAmount)) })
+                        
+                        addLog(`tx sent: ${tx.hash}`)
+                        console.log('[presale] Payment tx sent', tx.hash)
+                        alert(`Transaction sent: ${tx.hash}\n\nTokens will be sent to your wallet once confirmed!`)
+                        try {
+                          const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
+                          stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive, network: NETWORK_CONFIG.chainId })
+                          localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
+                        } catch (e) {}
+                      } catch (e: any) {
+                        const msg = e?.message || String(e)
+                        addLog(`buy failed: ${msg}`)
+                        console.error('Buy error', e)
+                        alert(`Transaction failed: ${msg}`)
+                      }
+                    }}
+                  >
+                    Buy BBUX
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    className="px-4 py-6 border rounded text-sm"
+                    onClick={() => {
+                      try {
+                        localStorage.removeItem('bbux_wallet_address')
+                        window.dispatchEvent(new CustomEvent('bbux:wallet-changed', { detail: { address: null } }))
+                      } catch (e) {}
+                      setAccount(null)
+                      setIsConnected(false)
+                      addLog('disconnected')
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+                <div className="text-xs text-center text-muted-foreground">
+                  {account ? `${account.slice(0,6)}...${account.slice(-4)}` : ''}
+                </div>
+              </div>
+            )
+          }
+          // Wagmi is ready - use WalletControlsInner
+          return (
+            <WalletControlsInner
+              amount={amount}
+              tokensToReceive={tokensToReceive}
+              addLog={addLog}
+              prefetchWalletConnect={prefetchWalletConnect}
+              wcRef={wcRef}
+              setAccount={setAccount}
+              setIsConnected={setIsConnected}
+              account={account}
+              isConnected={isConnected}
+            />
+          )
+        })()}
 
         <div className="text-xs text-center text-muted-foreground space-y-1">
           <p>
