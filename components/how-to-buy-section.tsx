@@ -74,12 +74,10 @@ export function HowToBuySection() {
           </p>
 
           <div className="mt-4">
-            <a
-              href="/claim/bbux-claim-sara-0003"
-              className="inline-block px-6 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Claim your tokens
-            </a>
+            <div className="inline-block px-6 py-2 bg-muted text-muted-foreground rounded-lg font-semibold cursor-not-allowed" title="Token claims available after Stage 1 ends (March 31, 2026)">
+              Claim Tokens (Coming Soon)
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Tokens claimable after Stage 1 ends: March 31, 2026</p>
           </div>
         </div>
       </div>
