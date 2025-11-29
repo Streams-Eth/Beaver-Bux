@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Twitter, Github } from "lucide-react"
+import { Twitter, Youtube } from "lucide-react"
 
 export function Footer() {
   return (
@@ -112,10 +112,13 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href="#"
+                href="https://www.youtube.com/@BeaverBux"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-background/10 hover:bg-background/20 flex items-center justify-center transition-colors"
+                aria-label="Beaver Bux on YouTube"
               >
-                <Github size={20} />
+                <Youtube size={20} />
               </a>
             </div>
             <p className="text-sm text-background/70 mt-4">Join our community of over 10,000 members!</p>

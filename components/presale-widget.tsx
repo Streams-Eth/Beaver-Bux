@@ -563,15 +563,23 @@ export function PresaleWidget() {
                         const network = await provider.getNetwork()
                         addLog(`current network: ${network.chainId}`)
                         if (network.chainId !== NETWORK_CONFIG.chainId) {
-                          alert(`Please switch to ${NETWORK_CONFIG.chainId === 11155111 ? 'Sepolia' : NETWORK_CONFIG.chainId === 8453 ? 'Base' : 'Ethereum'} network in your wallet`)
+                          const networkName = NETWORK_CONFIG.chainId === 11155111 ? 'Sepolia Testnet' : NETWORK_CONFIG.chainId === 8453 ? 'Base Network' : 'Ethereum Mainnet'
+                          alert(`Wrong Network!\n\nYou are connected to Chain ID: ${network.chainId}\nPlease switch to ${networkName} (Chain ID: ${NETWORK_CONFIG.chainId})`)
                           try {
                             await (window as any).ethereum.request({
                               method: 'wallet_switchEthereumChain',
                               params: [{ chainId: `0x${NETWORK_CONFIG.chainId.toString(16)}` }],
                             })
+                            // Re-check after switch attempt
+                            const newNetwork = await provider.getNetwork()
+                            if (newNetwork.chainId !== NETWORK_CONFIG.chainId) {
+                              addLog('network switch failed or cancelled')
+                              return
+                            }
                           } catch (switchError: any) {
+                            addLog(`network switch error: ${switchError.code}`)
                             if (switchError.code === 4902) {
-                              alert('Please add this network to your wallet first')
+                              alert(`${networkName} is not added to your wallet.\n\nPlease add it manually:\nNetwork: ${networkName}\nChain ID: ${NETWORK_CONFIG.chainId}\nRPC: ${NETWORK_CONFIG.rpcUrl}`)
                             }
                             return
                           }

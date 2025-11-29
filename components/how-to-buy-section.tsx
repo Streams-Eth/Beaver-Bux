@@ -59,14 +59,17 @@ export function HowToBuySection() {
         </div>
 
         <div className="mt-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            Need help? Join our {" "}
-            <a href="#" className="text-primary hover:underline font-semibold">
+          <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
+            Need help? Join our
+            <a href="https://t.me/BeaverBux" className="text-primary hover:underline font-semibold inline-flex items-center gap-1">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.67-.52.36-.99.53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.37-.49 1.03-.74 4.04-1.76 6.73-2.92 8.08-3.49 3.85-1.61 4.65-1.89 5.17-1.9.11 0 .37.03.54.17.14.11.18.26.2.37.01.08.03.29.01.45z" fill="currentColor"/>
+              </svg>
               Telegram community
-            </a>{" "}
-            or check out our {" "}
-            <a href="#" className="text-primary hover:underline font-semibold">
-              detailed guide
+            </a>
+            or email us @
+            <a href="mailto:hello@beaverbux.ca" className="text-primary hover:underline font-semibold">
+              hello@beaverbux.ca
             </a>
           </p>
 
