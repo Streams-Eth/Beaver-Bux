@@ -593,11 +593,30 @@ export function PresaleWidget() {
                         addLog(`tx sent: ${tx.hash}`)
                         console.log('[presale] Payment tx sent', tx.hash)
                         alert(`Transaction sent: ${tx.hash}\n\nTokens will be sent to your wallet once confirmed!`)
+                        
+                        // Store in localStorage
                         try {
                           const stored = JSON.parse(localStorage.getItem('bbux_local_tx') || '[]')
                           stored.push({ txHash: tx.hash, account, amount: ethAmount, tokens: tokensToReceive, network: NETWORK_CONFIG.chainId })
                           localStorage.setItem('bbux_local_tx', JSON.stringify(stored))
                         } catch (e) {}
+                        
+                        // Track in Supabase for analytics
+                        try {
+                          await fetch('/api/admin/track-purchase', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              tx_hash: tx.hash,
+                              wallet_address: account,
+                              eth_amount: ethAmount.toString(),
+                              bbux_amount: tokensToReceive.toString(),
+                              network: NETWORK_CONFIG.chainId,
+                            })
+                          })
+                        } catch (e) {
+                          console.log('Supabase tracking failed (non-critical):', e)
+                        }
                       } catch (e: any) {
                         const msg = e?.message || String(e)
                         addLog(`buy failed: ${msg}`)
