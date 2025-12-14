@@ -4,16 +4,23 @@ import { NextResponse } from 'next/server'
 async function getTransactionsFromBaseScan(contractAddress: string) {
   try {
     console.log(`[Dashboard] Querying BaseScan for transactions on ${contractAddress}`)
-    const response = await fetch(
-      `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&startblock=0&endblock=99999999&sort=desc&apikey=DNXJA2YPN4AWZQ1FM5JOUGGF4M6QSXFZ7H`
-    )
+    // Format URL properly
+    const url = `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&startblock=0&endblock=99999999&sort=desc&apikey=DNXJA2YPN4AWZQ1FM5JOUGGF4M6QSXFZ7H`
+    console.log(`[Dashboard] BaseScan URL: ${url.substring(0, 100)}...`)
+    
+    const response = await fetch(url, { 
+      timeout: 10000,
+      headers: { 'Accept': 'application/json' }
+    })
     const data = await response.json()
+    
+    console.log(`[Dashboard] BaseScan response status: ${data.status}, message: ${data.message}`)
     
     if (data.status === '1' && Array.isArray(data.result)) {
       console.log(`[Dashboard] Found ${data.result.length} transactions on BaseScan`)
       return data.result
     } else {
-      console.log(`[Dashboard] No transactions found on BaseScan: ${data.message}`)
+      console.log(`[Dashboard] BaseScan returned status ${data.status}: ${data.message}`)
       return []
     }
   } catch (e: any) {
