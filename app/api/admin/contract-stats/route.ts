@@ -59,8 +59,9 @@ export async function GET() {
     const latestBlock = parseInt(latestBlockHex, 16)
     console.log(`[Dashboard] Latest block: ${latestBlock}`)
     
-    // Query from beginning or last 1M blocks
-    const startBlock = Math.max(0, latestBlock - 1000000)
+    // Query from last 50,000 blocks (reasonable for free tier)
+    // This covers ~1 week of Base blocks
+    const startBlock = Math.max(0, latestBlock - 50000)
     console.log(`[Dashboard] Querying blocks ${startBlock} to ${latestBlock}`)
     
     // Query TokensPurchased events
