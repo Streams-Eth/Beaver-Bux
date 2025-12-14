@@ -44,6 +44,8 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/contract-stats')
       const data = await response.json()
       
+      console.log('Contract stats response:', data)
+      
       setStats({
         ethRaised: data.ethRaised || '0',
         tokensSold: data.tokensSold || '0',
@@ -81,36 +83,45 @@ export default function AdminDashboard() {
   }
 
   const exportToCSV = () => {
-    const date = new Date().toISOString().split('T')[0]
-    
-    // Summary CSV
-    let csv = 'BBUX Presale Summary Report\n'
-    csv += `Generated: ${new Date().toLocaleString()}\n`
-    csv += '\n'
-    csv += 'Metric,Value\n'
-    csv += `Total ETH Raised,${stats.ethRaised}\n`
-    csv += `Total BBUX Sold,${stats.tokensSold}\n`
-    csv += `Number of Contributors,${stats.contributorCount}\n`
-    csv += `Estimated USD Value,"$${(Number(stats.ethRaised) * 3000).toLocaleString()}"\n`
-    csv += '\n\n'
-    csv += 'Recent Purchases\n'
-    csv += 'Buyer Address,ETH Amount,BBUX Amount,Timestamp\n'
-    
-    // Add each purchase
-    stats.recentPurchases.forEach(purchase => {
-      csv += `${purchase.buyer},${purchase.amount},${purchase.tokens},"${purchase.timestamp}"\n`
-    })
-    
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `bbux-presale-report-${date}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
+    try {
+      const date = new Date().toISOString().split('T')[0]
+      
+      // Summary CSV
+      let csv = 'BBUX Presale Summary Report\n'
+      csv += `Generated: ${new Date().toLocaleString()}\n`
+      csv += '\n'
+      csv += 'Metric,Value\n'
+      csv += `Total ETH Raised,${stats.ethRaised}\n`
+      csv += `Total BBUX Sold,${stats.tokensSold}\n`
+      csv += `Number of Contributors,${stats.contributorCount}\n`
+      csv += `Estimated USD Value,"$${(Number(stats.ethRaised) * 3000).toLocaleString()}"\n`
+      csv += '\n\n'
+      csv += 'Recent Purchases\n'
+      csv += 'Buyer Address,ETH Amount,BBUX Amount,Timestamp\n'
+      
+      // Add each purchase
+      stats.recentPurchases.forEach(purchase => {
+        csv += `${purchase.buyer},${purchase.amount},${purchase.tokens},"${purchase.timestamp}"\n`
+      })
+      
+      // Create download link
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(blob)
+      
+      link.setAttribute('href', url)
+      link.setAttribute('download', `bbux-presale-report-${date}.csv`)
+      link.style.visibility = 'hidden'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      console.log('CSV exported successfully')
+    } catch (error) {
+      console.error('CSV export error:', error)
+      alert('Failed to export CSV. Check console for details.')
+    }
   }
 
   return (
@@ -313,7 +324,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={exportToCSV}
-            disabled={stats.recentPurchases.length === 0}
+            disabled={stats.loading}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             📊 Export to CSV
