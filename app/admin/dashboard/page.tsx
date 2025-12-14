@@ -119,6 +119,39 @@ export default function AdminDashboard() {
     }
   }
 
+  const exportToCSV = () => {
+    const date = new Date().toISOString().split('T')[0]
+    
+    // Summary CSV
+    let csv = 'BBUX Presale Summary Report\n'
+    csv += `Generated: ${new Date().toLocaleString()}\n`
+    csv += '\n'
+    csv += 'Metric,Value\n'
+    csv += `Total ETH Raised,${stats.ethRaised}\n`
+    csv += `Total BBUX Sold,${stats.tokensSold}\n`
+    csv += `Number of Contributors,${stats.contributorCount}\n`
+    csv += `Estimated USD Value,"$${(Number(stats.ethRaised) * 3000).toLocaleString()}"\n`
+    csv += '\n\n'
+    csv += 'Recent Purchases\n'
+    csv += 'Buyer Address,ETH Amount,BBUX Amount,Timestamp\n'
+    
+    // Add each purchase
+    stats.recentPurchases.forEach(purchase => {
+      csv += `${purchase.buyer},${purchase.amount},${purchase.tokens},"${purchase.timestamp}"\n`
+    })
+    
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bbux-presale-report-${date}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="container mx-auto max-w-7xl">
@@ -299,7 +332,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Links */}
-        <div className="mt-8 flex gap-4">
+        <div className="mt-8 flex flex-wrap gap-4">
           <a
             href="https://basescan.org/address/0xF479063E290E85e1470a11821128392F6063790B"
             target="_blank"
@@ -316,6 +349,13 @@ export default function AdminDashboard() {
             className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/10"
           >
             🔄 Refresh
+          </button>
+          <button
+            onClick={exportToCSV}
+            disabled={stats.recentPurchases.length === 0}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            📊 Export to CSV
           </button>
         </div>
       </div>
