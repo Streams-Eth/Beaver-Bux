@@ -1,11 +1,72 @@
 import { NextResponse } from 'next/server'
 
+// Query smart contract directly via Base RPC
+async function getTransactionsFromRPC(contractAddress: string) {
+  const rpcUrl = 'https://mainnet.base.org'
+  
+  try {
+    console.log(`[Dashboard] Querying Base RPC for events from ${contractAddress}`)
+    
+    // Get the presale contract ABI to know the TokensPurchased event signature
+    const eventSignature = '0x6f29ea0e0e5f6e1fdf0c46f7e1f0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e' // Will use generic approach
+    
+    // Use eth_getLogs to find all token purchase transactions
+    // For now, let's query transaction receipts directly from recent blocks
+    const latestBlockRes = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_blockNumber',
+        params: [],
+        id: 1,
+      })
+    })
+    
+    const blockData = await latestBlockRes.json()
+    const latestBlock = parseInt(blockData.result as string, 16)
+    console.log(`[Dashboard] Latest block: ${latestBlock}`)
+    
+    // Let's use a simpler approach - query for all transactions to the address
+    // Since we can't easily filter for "Buy" function calls via RPC, 
+    // let's try querying the presale contract's totalSold function
+    
+    const callRes = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [
+          {
+            to: contractAddress,
+            // totalSold() function selector
+            data: '0x8ae39cba'
+          },
+          'latest'
+        ],
+        id: 1,
+      })
+    })
+    
+    const callData = await callRes.json()
+    console.log(`[Dashboard] RPC call result:`, callData)
+    
+    // For now, return empty - we can't easily decode without ethers
+    return []
+    
+  } catch (e: any) {
+    console.log(`[Dashboard] RPC query failed: ${e.message}`)
+    return []
+  }
+}
+
 // Query BaseScan API for transactions (no block range limit)
 async function getTransactionsFromBaseScan(contractAddress: string) {
   try {
     console.log(`[Dashboard] Querying BaseScan for transactions on ${contractAddress}`)
-    // Format URL properly
-    const url = `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&startblock=0&endblock=99999999&sort=desc&apikey=E53TR9MNJ3R9K8MKUDKH3JHCQMRNNDNFMF`
+    // Use api.basescan.org with minimal parameters
+    const url = `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&apikey=E53TR9MNJ3R9K8MKUDKH3JHCQMRNNDNFMF`
     console.log(`[Dashboard] BaseScan URL: ${url.substring(0, 100)}...`)
     
     const response = await fetch(url, { 
@@ -14,7 +75,7 @@ async function getTransactionsFromBaseScan(contractAddress: string) {
     })
     const data = await response.json()
     
-    console.log(`[Dashboard] BaseScan response status: ${data.status}, message: ${data.message}`)
+    console.log(`[Dashboard] BaseScan response:`, data)
     
     if (data.status === '1' && Array.isArray(data.result)) {
       console.log(`[Dashboard] Found ${data.result.length} transactions on BaseScan`)
