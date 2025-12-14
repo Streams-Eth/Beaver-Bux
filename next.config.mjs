@@ -11,6 +11,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: ['thread-stream'],
+  },
   // Empty turbopack config to allow webpack config to coexist in Next.js 16
   turbopack: {},
   webpack(config) {
