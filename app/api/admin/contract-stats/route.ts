@@ -1,30 +1,45 @@
 import { NextResponse } from 'next/server'
-import { ethers } from 'ethers'
+
+// Simple JSON-RPC call without ethers
+async function jsonRpcCall(rpcUrl: string, method: string, params: any[] = []) {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method,
+      params,
+      id: 1,
+    }),
+  })
+  const data = await response.json()
+  if (data.error) throw new Error(data.error.message)
+  return data.result
+}
 
 export async function GET() {
   try {
     const PRESALE_ADDRESS = '0xF479063E290E85e1470a11821128392F6063790B'
     
-    // Try multiple RPC endpoints
-    let provider: any
+    // Try different RPC endpoints
     const rpcUrls = [
       'https://mainnet.base.org',
       'https://base.publicnode.com',
-      'https://base.meowrpc.com',
     ]
     
-    for (const rpcUrl of rpcUrls) {
+    let rpcUrl = ''
+    for (const url of rpcUrls) {
       try {
-        provider = new ethers.providers.JsonRpcProvider(rpcUrl)
-        await provider.getBlockNumber()
-        console.log(`[Dashboard] Connected to RPC: ${rpcUrl}`)
+        await jsonRpcCall(url, 'eth_chainId')
+        rpcUrl = url
+        console.log(`[Dashboard] Using RPC: ${url}`)
         break
       } catch (e) {
-        console.log(`[Dashboard] RPC failed: ${rpcUrl}`, e)
+        console.log(`[Dashboard] RPC failed: ${url}`)
       }
     }
     
-    if (!provider) {
+    if (!rpcUrl) {
       return NextResponse.json({
         error: 'All RPC endpoints failed',
         ethRaised: '0',
@@ -34,59 +49,89 @@ export async function GET() {
       })
     }
 
-    const presaleABI = [
-      'function totalSold() view returns (uint256)',
-      'function contributions(address) view returns (uint256)',
-      'event TokensPurchased(address indexed buyer, uint256 ethAmount, uint256 tokensSent)',
-    ]
+    // Get latest block for events
+    const latestBlock = parseInt(await jsonRpcCall(rpcUrl, 'eth_blockNumber'), 16)
+    const startBlock = Math.max(0, latestBlock - 100000) // Last ~100k blocks
     
-    const presale = new ethers.Contract(PRESALE_ADDRESS, presaleABI, provider)
+    // Call totalSold() - returns uint256
+    const totalSoldCalldata = '0x08ce2a0f' // totalSold() selector
+    const result = await jsonRpcCall(rpcUrl, 'eth_call', [
+      { to: PRESALE_ADDRESS, data: totalSoldCalldata },
+      'latest',
+    ])
     
-    // Get total BBUX sold
-    const tokensSold = await presale.totalSold().catch(() => ethers.BigNumber.from(0))
+    const tokensSold = BigInt(result || '0x0').toString()
     
-    // Get all events
-    const filter = presale.filters.TokensPurchased()
-    const allEvents = await presale.queryFilter(filter, 0, 'latest').catch(() => [])
+    // Query logs for TokensPurchased events
+    // Topic: keccak256('TokensPurchased(address,uint256,uint256)')
+    const topic = '0x8ff8b5f0a21b3cf82f37d61f85be04bf6a7ed36aacc79c0c9ea4ccd0cffce6fc'
     
-    let ethRaised = ethers.BigNumber.from(0)
+    const logs = await jsonRpcCall(rpcUrl, 'eth_getLogs', [
+      {
+        address: PRESALE_ADDRESS,
+        topics: [topic],
+        fromBlock: '0x' + startBlock.toString(16),
+        toBlock: 'latest',
+      },
+    ])
+    
+    let ethRaised = 0n
     const uniqueBuyers = new Set<string>()
+    const eventList: any[] = []
     
-    allEvents.forEach((event: any) => {
-      if (event.args) {
-        ethRaised = ethRaised.add(event.args.ethAmount || 0)
-        uniqueBuyers.add(event.args.buyer?.toLowerCase())
-      }
-    })
-    
-    const contributorCount = uniqueBuyers.size
-    
-    // Get recent purchases
-    const recentPurchases = await Promise.all(
-      allEvents.slice(-10).reverse().map(async (event: any) => {
+    if (Array.isArray(logs)) {
+      for (const log of logs) {
         try {
-          const block = await provider.getBlock(event.blockNumber)
-          return {
-            buyer: event.args?.buyer || '',
-            amount: ethers.utils.formatEther(event.args?.ethAmount || 0),
-            tokens: ethers.utils.formatEther(event.args?.tokensSent || 0),
-            timestamp: new Date(block.timestamp * 1000).toLocaleString(),
-          }
+          const buyer = '0x' + log.topics[1].slice(26) // Extract from indexed parameter
+          const data = log.data
+          
+          // Decode: ethAmount (256 bits) + tokensSent (256 bits)
+          const ethAmount = BigInt(data.slice(0, 66))
+          const tokensAmount = BigInt('0x' + data.slice(66, 130))
+          
+          ethRaised += ethAmount
+          uniqueBuyers.add(buyer.toLowerCase())
+          
+          eventList.push({
+            buyer,
+            ethAmount,
+            tokensAmount,
+            blockNumber: parseInt(log.blockNumber, 16),
+          })
         } catch (e) {
-          return {
-            buyer: event.args?.buyer || '',
-            amount: ethers.utils.formatEther(event.args?.ethAmount || 0),
-            tokens: ethers.utils.formatEther(event.args?.tokensSent || 0),
-            timestamp: 'Unknown',
-          }
+          console.log('Error parsing event:', e)
         }
-      })
-    )
+      }
+    }
+    
+    // Format numbers
+    const ethRaisedFormatted = (Number(ethRaised) / 1e18).toFixed(6)
+    const tokensSoldFormatted = (BigInt(tokensSold) / BigInt(1e18)).toString()
+    
+    // Get block timestamps for recent events
+    const recentPurchases = []
+    for (const event of eventList.slice(-10).reverse()) {
+      try {
+        const blockData = await jsonRpcCall(rpcUrl, 'eth_getBlockByNumber', [
+          '0x' + event.blockNumber.toString(16),
+          false,
+        ])
+        
+        recentPurchases.push({
+          buyer: event.buyer,
+          amount: (Number(event.ethAmount) / 1e18).toFixed(6),
+          tokens: (Number(event.tokensAmount) / 1e18).toLocaleString(),
+          timestamp: new Date(parseInt(blockData.timestamp, 16) * 1000).toLocaleString(),
+        })
+      } catch (e) {
+        console.log('Error fetching block:', e)
+      }
+    }
     
     return NextResponse.json({
-      ethRaised: ethers.utils.formatEther(ethRaised),
-      tokensSold: ethers.utils.formatEther(tokensSold),
-      contributorCount,
+      ethRaised: ethRaisedFormatted,
+      tokensSold: tokensSoldFormatted,
+      contributorCount: uniqueBuyers.size,
       recentPurchases,
     })
   } catch (error: any) {
