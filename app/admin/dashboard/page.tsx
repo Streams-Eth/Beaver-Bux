@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ethers } from 'ethers'
 
 interface Stats {
   ethRaised: string
@@ -42,57 +41,16 @@ export default function AdminDashboard() {
 
   const loadContractStats = async () => {
     try {
-      const PRESALE_ADDRESS = '0xF479063E290E85e1470a11821128392F6063790B'
-      const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org')
-      
-      const presaleABI = [
-        'function totalSold() view returns (uint256)',
-        'function contributions(address) view returns (uint256)',
-        'event TokensPurchased(address indexed buyer, uint256 ethAmount, uint256 tokensSent)',
-      ]
-      
-      const presale = new ethers.Contract(PRESALE_ADDRESS, presaleABI, provider)
-      
-      // Get total BBUX sold
-      const tokensSold = await presale.totalSold().catch(() => ethers.BigNumber.from(0))
-      
-      // Calculate ETH raised and contributors from events
-      const filter = presale.filters.TokensPurchased()
-      const currentBlock = await provider.getBlockNumber()
-      const allEvents = await presale.queryFilter(filter, 0, 'latest').catch(() => [])
-      
-      let ethRaised = ethers.BigNumber.from(0)
-      const uniqueBuyers = new Set<string>()
-      
-      allEvents.forEach((event: any) => {
-        if (event.args) {
-          ethRaised = ethRaised.add(event.args.ethAmount || 0)
-          uniqueBuyers.add(event.args.buyer?.toLowerCase())
-        }
-      })
-      
-      const contributorCount = uniqueBuyers.size
-      
-      // Get recent purchases (last 10 events)
-      const recentPurchases = await Promise.all(
-        allEvents.slice(-10).reverse().map(async (event: any) => {
-          const block = await provider.getBlock(event.blockNumber)
-          return {
-            buyer: event.args?.buyer || '',
-            amount: ethers.utils.formatEther(event.args?.ethAmount || 0),
-            tokens: ethers.utils.formatEther(event.args?.tokensSent || 0),
-            timestamp: new Date(block.timestamp * 1000).toLocaleString(),
-          }
-        })
-      )
+      const response = await fetch('/api/admin/contract-stats')
+      const data = await response.json()
       
       setStats({
-        ethRaised: ethers.utils.formatEther(ethRaised),
-        tokensSold: ethers.utils.formatEther(tokensSold),
-        contributorCount: contributorCount.toNumber ? contributorCount.toNumber() : Number(contributorCount),
-        recentPurchases,
+        ethRaised: data.ethRaised || '0',
+        tokensSold: data.tokensSold || '0',
+        contributorCount: data.contributorCount || 0,
+        recentPurchases: data.recentPurchases || [],
         loading: false,
-        error: null,
+        error: data.error || null,
       })
     } catch (error: any) {
       console.error('Contract stats error:', error)
