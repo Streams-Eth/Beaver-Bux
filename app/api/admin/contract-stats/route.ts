@@ -5,7 +5,7 @@ async function getTransactionsFromBaseScan(contractAddress: string) {
   try {
     console.log(`[Dashboard] Querying BaseScan for transactions on ${contractAddress}`)
     // Format URL properly
-    const url = `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&startblock=0&endblock=99999999&sort=desc&apikey=DNXJA2YPN4AWZQ1FM5JOUGGF4M6QSXFZ7H`
+    const url = `https://api.basescan.org/api?module=account&action=txlist&address=${contractAddress}&startblock=0&endblock=99999999&sort=desc&apikey=E53TR9MNJ3R9K8MKUDKH3JHCQMRNNDNFMF`
     console.log(`[Dashboard] BaseScan URL: ${url.substring(0, 100)}...`)
     
     const response = await fetch(url, { 
