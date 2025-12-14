@@ -44,7 +44,14 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/contract-stats')
       const data = await response.json()
       
-      console.log('Contract stats response:', data)
+      console.log('Contract stats response:', {
+        ethRaised: data.ethRaised,
+        tokensSold: data.tokensSold,
+        contributorCount: data.contributorCount,
+        recentPurchasesCount: data.recentPurchases?.length || 0,
+        recentPurchases: data.recentPurchases,
+        error: data.error,
+      })
       
       setStats({
         ethRaised: data.ethRaised || '0',
@@ -84,6 +91,13 @@ export default function AdminDashboard() {
 
   const exportToCSV = () => {
     try {
+      console.log('Exporting CSV with data:', {
+        ethRaised: stats.ethRaised,
+        tokensSold: stats.tokensSold,
+        contributorCount: stats.contributorCount,
+        recentPurchasesCount: stats.recentPurchases.length,
+      })
+      
       const date = new Date().toISOString().split('T')[0]
       
       // Summary CSV
