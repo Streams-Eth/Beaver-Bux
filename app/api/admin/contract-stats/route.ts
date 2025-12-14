@@ -50,8 +50,13 @@ export async function GET() {
     }
 
     // Get latest block for events
-    const latestBlock = parseInt(await jsonRpcCall(rpcUrl, 'eth_blockNumber'), 16)
-    const startBlock = Math.max(0, latestBlock - 100000) // Last ~100k blocks
+    const latestBlockHex = await jsonRpcCall(rpcUrl, 'eth_blockNumber')
+    const latestBlock = parseInt(latestBlockHex, 16)
+    console.log(`[Dashboard] Latest block: ${latestBlock}`)
+    
+    // Go back 1 million blocks to catch presale (presale likely started recently)
+    const startBlock = Math.max(0, latestBlock - 1000000)
+    console.log(`[Dashboard] Querying blocks ${startBlock} to ${latestBlock}`)
     
     // Call totalSold() - returns uint256
     const totalSoldCalldata = '0x08ce2a0f' // totalSold() selector
@@ -61,11 +66,13 @@ export async function GET() {
     ])
     
     const tokensSold = BigInt(result || '0x0').toString()
+    console.log(`[Dashboard] Total sold (raw): ${result}, parsed: ${tokensSold}`)
     
     // Query logs for TokensPurchased events
     // Topic: keccak256('TokensPurchased(address,uint256,uint256)')
     const topic = '0x8ff8b5f0a21b3cf82f37d61f85be04bf6a7ed36aacc79c0c9ea4ccd0cffce6fc'
     
+    console.log(`[Dashboard] Querying logs for topic ${topic}`)
     const logs = await jsonRpcCall(rpcUrl, 'eth_getLogs', [
       {
         address: PRESALE_ADDRESS,
@@ -75,11 +82,13 @@ export async function GET() {
       },
     ])
     
+    console.log(`[Dashboard] Found ${logs?.length || 0} logs`)
+    
     let ethRaised = 0n
     const uniqueBuyers = new Set<string>()
     const eventList: any[] = []
     
-    if (Array.isArray(logs)) {
+    if (Array.isArray(logs) && logs.length > 0) {
       for (const log of logs) {
         try {
           const buyer = '0x' + log.topics[1].slice(26) // Extract from indexed parameter
@@ -88,6 +97,8 @@ export async function GET() {
           // Decode: ethAmount (256 bits) + tokensSent (256 bits)
           const ethAmount = BigInt(data.slice(0, 66))
           const tokensAmount = BigInt('0x' + data.slice(66, 130))
+          
+          console.log(`[Dashboard] Event: buyer=${buyer}, eth=${ethAmount}, tokens=${tokensAmount}`)
           
           ethRaised += ethAmount
           uniqueBuyers.add(buyer.toLowerCase())
@@ -99,14 +110,18 @@ export async function GET() {
             blockNumber: parseInt(log.blockNumber, 16),
           })
         } catch (e) {
-          console.log('Error parsing event:', e)
+          console.log('[Dashboard] Error parsing event:', e)
         }
       }
+    } else {
+      console.log('[Dashboard] No logs found')
     }
     
     // Format numbers
     const ethRaisedFormatted = (Number(ethRaised) / 1e18).toFixed(6)
     const tokensSoldFormatted = (BigInt(tokensSold) / BigInt(1e18)).toString()
+    
+    console.log(`[Dashboard] Final: ethRaised=${ethRaisedFormatted}, tokensSold=${tokensSoldFormatted}, contributors=${uniqueBuyers.size}`)
     
     // Get block timestamps for recent events
     const recentPurchases = []
@@ -124,7 +139,7 @@ export async function GET() {
           timestamp: new Date(parseInt(blockData.timestamp, 16) * 1000).toLocaleString(),
         })
       } catch (e) {
-        console.log('Error fetching block:', e)
+        console.log('[Dashboard] Error fetching block:', e)
       }
     }
     
