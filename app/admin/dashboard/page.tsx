@@ -45,12 +45,14 @@ export default function AdminDashboard() {
       const data = await response.json()
       
       console.log('Contract stats response:', {
+        status: response.status,
         ethRaised: data.ethRaised,
         tokensSold: data.tokensSold,
         contributorCount: data.contributorCount,
         recentPurchasesCount: data.recentPurchases?.length || 0,
         recentPurchases: data.recentPurchases,
         error: data.error,
+        fullResponse: data,
       })
       
       setStats({

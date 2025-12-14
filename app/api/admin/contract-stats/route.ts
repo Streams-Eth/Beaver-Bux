@@ -2,19 +2,27 @@ import { NextResponse } from 'next/server'
 
 // Simple JSON-RPC call without ethers
 async function jsonRpcCall(rpcUrl: string, method: string, params: any[] = []) {
-  const response = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      method,
-      params,
-      id: 1,
-    }),
-  })
-  const data = await response.json()
-  if (data.error) throw new Error(data.error.message)
-  return data.result
+  try {
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method,
+        params,
+        id: 1,
+      }),
+    })
+    const data = await response.json()
+    if (data.error) {
+      console.log(`[RPC] Error for ${method}: ${JSON.stringify(data.error)}`)
+      throw new Error(`${method}: ${data.error.message}`)
+    }
+    return data.result
+  } catch (err: any) {
+    console.log(`[RPC] Exception for ${method}: ${err.message}`)
+    throw err
+  }
 }
 
 export async function GET() {
