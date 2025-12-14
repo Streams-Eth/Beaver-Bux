@@ -24,6 +24,9 @@ export async function GET() {
     const rpcUrls = [
       'https://mainnet.base.org',
       'https://base.publicnode.com',
+      'https://base.llamarpc.com',
+      'https://base-rpc.publicnode.com',
+      'https://base.meowrpc.com',
     ]
     
     let rpcUrl = ''
