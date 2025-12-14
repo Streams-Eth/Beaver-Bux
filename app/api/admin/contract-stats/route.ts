@@ -22,6 +22,9 @@ export async function GET() {
   try {
     const PRESALE_ADDRESS = '0xF479063E290E85e1470a11821128392F6063790B'
     const rpcUrls = [
+      'https://base-mainnet.g.alchemy.com/v2/qSihHc_yL9QSYQ_Jwtdyq',
+      'https://rpc.ankr.com/base',
+      'https://base-rpc.ankr.com/http',
       'https://mainnet.base.org',
       'https://base.publicnode.com',
       'https://base.llamarpc.com',
