@@ -59,8 +59,9 @@ export async function GET() {
     const latestBlock = parseInt(latestBlockHex, 16)
     console.log(`[Dashboard] Latest block: ${latestBlock}`)
     
-    // Query from last 2 million blocks (~30 days) to catch all presale transactions
-    const startBlock = Math.max(0, latestBlock - 2000000)
+    // Known transaction blocks: 38834746 and 38273309
+    // Query from ~2 weeks back to now
+    const startBlock = Math.max(0, latestBlock - 100000)
     console.log(`[Dashboard] Querying blocks ${startBlock} to ${latestBlock}`)
     
     // Query TokensPurchased events
