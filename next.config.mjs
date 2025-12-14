@@ -5,15 +5,14 @@ const __dirname = path.dirname(__filename)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
   images: {
     unoptimized: true,
   },
+  // Empty turbopack config to allow webpack config to coexist in Next.js 16
+  turbopack: {},
   webpack(config) {
     // Force a single resolved copy of @tanstack/react-query to avoid
     // runtime mismatches between QueryClient and QueryClientProvider.
