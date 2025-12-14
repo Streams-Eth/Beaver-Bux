@@ -109,7 +109,7 @@ export default function AdminDashboard() {
       setStats({
         ethRaised: data.totalETH || '0',
         tokensSold: data.totalBBUX || '0',
-        contributorCount: data.totalPurchases || 0,
+        contributorCount: data.uniqueContributors || data.totalPurchases || 0,
         recentPurchases: recentPurchases,
         loading: false,
         error: null,

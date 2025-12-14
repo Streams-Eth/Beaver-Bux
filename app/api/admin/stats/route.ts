@@ -33,11 +33,15 @@ export async function GET() {
     const totalPurchases = purchases?.length || 0
     const totalETH = purchases?.reduce((sum, p) => sum + parseFloat(p.eth_amount || '0'), 0) || 0
     const totalBBUX = purchases?.reduce((sum, p) => sum + parseFloat(p.bbux_amount || '0'), 0) || 0
+    
+    // Count unique contributors (distinct wallet addresses)
+    const uniqueContributors = new Set(purchases?.map(p => p.wallet_address?.toLowerCase()) || []).size
 
     return NextResponse.json({
       totalPurchases,
       totalETH: totalETH.toFixed(6),
       totalBBUX: totalBBUX.toFixed(2),
+      uniqueContributors,
       recentPurchases: purchases?.slice(0, 10) || [],
     })
   } catch (error: any) {
