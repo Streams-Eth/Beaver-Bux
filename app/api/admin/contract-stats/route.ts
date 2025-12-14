@@ -22,9 +22,9 @@ export async function GET() {
   try {
     const PRESALE_ADDRESS = '0xF479063E290E85e1470a11821128392F6063790B'
     const rpcUrls = [
-      'https://base-mainnet.g.alchemy.com/v2/qSihHc_yL9QSYQ_Jwtdyq',
       'https://rpc.ankr.com/base',
       'https://base-rpc.ankr.com/http',
+      'https://base-mainnet.g.alchemy.com/v2/qSihHc_yL9QSYQ_Jwtdyq',
       'https://mainnet.base.org',
       'https://base.publicnode.com',
       'https://base.llamarpc.com',
@@ -59,9 +59,8 @@ export async function GET() {
     const latestBlock = parseInt(latestBlockHex, 16)
     console.log(`[Dashboard] Latest block: ${latestBlock}`)
     
-    // Query from last 50,000 blocks (reasonable for free tier)
-    // This covers ~1 week of Base blocks
-    const startBlock = Math.max(0, latestBlock - 50000)
+    // Query from last 2 million blocks (~30 days) to catch all presale transactions
+    const startBlock = Math.max(0, latestBlock - 2000000)
     console.log(`[Dashboard] Querying blocks ${startBlock} to ${latestBlock}`)
     
     // Query TokensPurchased events
