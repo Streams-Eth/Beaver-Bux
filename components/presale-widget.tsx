@@ -292,8 +292,14 @@ export function PresaleWidget() {
       <CardHeader className="space-y-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold text-foreground">{countdown}</CardTitle>
-          <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm font-semibold">
-            Stage {currentStage.id}
+          <div className="flex gap-2">
+            <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm font-semibold">
+              Stage {currentStage.id}
+            </div>
+            <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1" title={`Contract: ${PRESALE_CONTRACT}`}>
+              <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400"></span>
+              Base
+            </div>
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
@@ -556,12 +562,20 @@ export function PresaleWidget() {
 
                       try {
                         addLog(`attempting buy: ${ethAmount} ETH to ${PRESALE_CONTRACT}`)
+                        console.log('[PRESALE] Configuration:', {
+                          network: process.env.NEXT_PUBLIC_NETWORK,
+                          chainId: NETWORK_CONFIG.chainId,
+                          presaleAddress: PRESALE_CONTRACT,
+                          tokenAddress: NETWORK_CONFIG.token,
+                          amount: ethAmount,
+                        })
                         const provider = new ethers.providers.Web3Provider((window as any).ethereum)
                         const signer = provider.getSigner()
                         
                         // Check network
                         const network = await provider.getNetwork()
                         addLog(`current network: ${network.chainId}`)
+                        console.log('[PRESALE] Wallet connected to Chain ID:', network.chainId)
                         if (network.chainId !== NETWORK_CONFIG.chainId) {
                           const networkName = NETWORK_CONFIG.chainId === 11155111 ? 'Sepolia Testnet' : NETWORK_CONFIG.chainId === 8453 ? 'Base Network' : 'Ethereum Mainnet'
                           alert(`Wrong Network!\n\nYou are connected to Chain ID: ${network.chainId}\nPlease switch to ${networkName} (Chain ID: ${NETWORK_CONFIG.chainId})`)
