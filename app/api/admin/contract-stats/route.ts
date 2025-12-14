@@ -1,35 +1,26 @@
 import { NextResponse } from 'next/server'
 
-// Simple JSON-RPC call without ethers
 async function jsonRpcCall(rpcUrl: string, method: string, params: any[] = []) {
-  try {
-    const response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method,
-        params,
-        id: 1,
-      }),
-    })
-    const data = await response.json()
-    if (data.error) {
-      console.log(`[RPC] Error for ${method}: ${JSON.stringify(data.error)}`)
-      throw new Error(`${method}: ${data.error.message}`)
-    }
-    return data.result
-  } catch (err: any) {
-    console.log(`[RPC] Exception for ${method}: ${err.message}`)
-    throw err
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      method,
+      params,
+      id: 1,
+    }),
+  })
+  const data = await response.json()
+  if (data.error) {
+    throw new Error(`${method}: ${data.error.message}`)
   }
+  return data.result
 }
 
 export async function GET() {
   try {
     const PRESALE_ADDRESS = '0xF479063E290E85e1470a11821128392F6063790B'
-    
-    // Try different RPC endpoints
     const rpcUrls = [
       'https://mainnet.base.org',
       'https://base.publicnode.com',
@@ -43,7 +34,7 @@ export async function GET() {
         console.log(`[Dashboard] Using RPC: ${url}`)
         break
       } catch (e) {
-        console.log(`[Dashboard] RPC failed: ${url}`)
+        console.log(`[Dashboard] RPC ${url} not available`)
       }
     }
     
@@ -57,58 +48,52 @@ export async function GET() {
       })
     }
 
-    // Get latest block for events
+    // Get latest block
     const latestBlockHex = await jsonRpcCall(rpcUrl, 'eth_blockNumber')
     const latestBlock = parseInt(latestBlockHex, 16)
     console.log(`[Dashboard] Latest block: ${latestBlock}`)
     
-    // Go back 1 million blocks to catch presale (presale likely started recently)
+    // Query from beginning or last 1M blocks
     const startBlock = Math.max(0, latestBlock - 1000000)
     console.log(`[Dashboard] Querying blocks ${startBlock} to ${latestBlock}`)
     
-    // Call totalSold() - returns uint256
-    const totalSoldCalldata = '0x08ce2a0f' // totalSold() selector
-    const result = await jsonRpcCall(rpcUrl, 'eth_call', [
-      { to: PRESALE_ADDRESS, data: totalSoldCalldata },
-      'latest',
-    ])
+    // Query TokensPurchased events
+    // Event: TokensPurchased(address indexed buyer, uint256 ethAmount, uint256 tokensSent)
+    const eventTopic = '0x8ff8b5f0a21b3cf82f37d61f85be04bf6a7ed36aacc79c0c9ea4ccd0cffce6fc'
     
-    const tokensSold = BigInt(result || '0x0').toString()
-    console.log(`[Dashboard] Total sold (raw): ${result}, parsed: ${tokensSold}`)
-    
-    // Query logs for TokensPurchased events
-    // Topic: keccak256('TokensPurchased(address,uint256,uint256)')
-    const topic = '0x8ff8b5f0a21b3cf82f37d61f85be04bf6a7ed36aacc79c0c9ea4ccd0cffce6fc'
-    
-    console.log(`[Dashboard] Querying logs for topic ${topic}`)
+    console.log(`[Dashboard] Fetching logs for topic ${eventTopic}`)
     const logs = await jsonRpcCall(rpcUrl, 'eth_getLogs', [
       {
         address: PRESALE_ADDRESS,
-        topics: [topic],
+        topics: [eventTopic],
         fromBlock: '0x' + startBlock.toString(16),
         toBlock: 'latest',
       },
     ])
     
-    console.log(`[Dashboard] Found ${logs?.length || 0} logs`)
+    console.log(`[Dashboard] Found ${logs?.length || 0} TokensPurchased events`)
     
     let ethRaised = 0n
+    let tokensSold = 0n
     const uniqueBuyers = new Set<string>()
     const eventList: any[] = []
     
-    if (Array.isArray(logs) && logs.length > 0) {
+    if (Array.isArray(logs)) {
       for (const log of logs) {
         try {
-          const buyer = '0x' + log.topics[1].slice(26) // Extract from indexed parameter
+          // Extract buyer from indexed parameter in topics[1]
+          const buyer = '0x' + log.topics[1].slice(26)
+          
+          // Data contains ethAmount and tokensSent
+          // Format: 0x + ethAmount(64 hex) + tokensSent(64 hex)
           const data = log.data
-          
-          // Decode: ethAmount (256 bits) + tokensSent (256 bits)
           const ethAmount = BigInt(data.slice(0, 66))
-          const tokensAmount = BigInt('0x' + data.slice(66, 130))
+          const tokensAmount = BigInt(data.slice(66, 130))
           
-          console.log(`[Dashboard] Event: buyer=${buyer}, eth=${ethAmount}, tokens=${tokensAmount}`)
+          console.log(`[Dashboard] Event: buyer=${buyer.slice(0, 10)}..., eth=${(Number(ethAmount) / 1e18).toFixed(6)}, tokens=${(Number(tokensAmount) / 1e18).toFixed(2)}`)
           
           ethRaised += ethAmount
+          tokensSold += tokensAmount
           uniqueBuyers.add(buyer.toLowerCase())
           
           eventList.push({
@@ -116,38 +101,40 @@ export async function GET() {
             ethAmount,
             tokensAmount,
             blockNumber: parseInt(log.blockNumber, 16),
+            txHash: log.transactionHash,
           })
-        } catch (e) {
-          console.log('[Dashboard] Error parsing event:', e)
+        } catch (e: any) {
+          console.log(`[Dashboard] Error parsing event: ${e.message}`)
         }
       }
-    } else {
-      console.log('[Dashboard] No logs found')
     }
     
-    // Format numbers
+    // Format output
     const ethRaisedFormatted = (Number(ethRaised) / 1e18).toFixed(6)
-    const tokensSoldFormatted = (BigInt(tokensSold) / BigInt(1e18)).toString()
+    const tokensSoldFormatted = (Number(tokensSold) / 1e18).toFixed(2)
     
-    console.log(`[Dashboard] Final: ethRaised=${ethRaisedFormatted}, tokensSold=${tokensSoldFormatted}, contributors=${uniqueBuyers.size}`)
+    console.log(`[Dashboard] Summary: ${ethRaisedFormatted} ETH, ${tokensSoldFormatted} BBUX, ${uniqueBuyers.size} buyers`)
     
     // Get block timestamps for recent events
     const recentPurchases = []
-    for (const event of eventList.slice(-10).reverse()) {
+    const recentEvents = eventList.slice(-10).reverse()
+    
+    for (const event of recentEvents) {
       try {
         const blockData = await jsonRpcCall(rpcUrl, 'eth_getBlockByNumber', [
           '0x' + event.blockNumber.toString(16),
           false,
         ])
         
+        const timestamp = new Date(parseInt(blockData.timestamp, 16) * 1000).toLocaleString()
         recentPurchases.push({
           buyer: event.buyer,
           amount: (Number(event.ethAmount) / 1e18).toFixed(6),
           tokens: (Number(event.tokensAmount) / 1e18).toLocaleString(),
-          timestamp: new Date(parseInt(blockData.timestamp, 16) * 1000).toLocaleString(),
+          timestamp,
         })
-      } catch (e) {
-        console.log('[Dashboard] Error fetching block:', e)
+      } catch (e: any) {
+        console.log(`[Dashboard] Error fetching block: ${e.message}`)
       }
     }
     
@@ -158,7 +145,7 @@ export async function GET() {
       recentPurchases,
     })
   } catch (error: any) {
-    console.error('[Dashboard] Error:', error)
+    console.error('[Dashboard] Error:', error.message)
     return NextResponse.json({
       error: error.message || 'Failed to load stats',
       ethRaised: '0',
