@@ -35,52 +35,8 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    loadContractStats()
     loadDatabaseStats()
   }, [])
-
-  const loadContractStats = async () => {
-    try {
-      const response = await fetch('/api/admin/contract-stats')
-      const data = await response.json()
-      
-      console.log('Contract stats response:', {
-        status: response.status,
-        ethRaised: data.ethRaised,
-        tokensSold: data.tokensSold,
-        contributorCount: data.contributorCount,
-        recentPurchasesCount: data.recentPurchases?.length || 0,
-        error: data.error,
-      })
-      
-      // Only update if we got valid data (not an error)
-      if (data.ethRaised && data.ethRaised !== '0') {
-        setStats({
-          ethRaised: data.ethRaised || '0',
-          tokensSold: data.tokensSold || '0',
-          contributorCount: data.contributorCount || 0,
-          recentPurchases: data.recentPurchases || [],
-          loading: false,
-          error: null,
-        })
-      } else if (data.error) {
-        console.warn('Contract stats failed:', data.error)
-        setStats(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Contract API unavailable - using database data',
-        }))
-        // Continue to load database stats as fallback
-      }
-    } catch (error: any) {
-      console.error('Contract stats error:', error)
-      setStats(prev => ({
-        ...prev,
-        loading: false,
-        error: 'Failed to load contract stats - using database data',
-      }))
-    }
-  }
 
   const loadDatabaseStats = async () => {
     try {
@@ -92,11 +48,12 @@ export default function AdminDashboard() {
         totalETH: data.totalETH,
         totalBBUX: data.totalBBUX,
         totalPurchases: data.totalPurchases,
+        uniqueContributors: data.uniqueContributors,
         recentPurchasesCount: data.recentPurchases?.length || 0,
         fullResponse: data,
       })
       
-      // Use database stats as the source of truth since BaseScan API is down
+      // Use database stats as the source of truth
       // Map database response to match stats interface
       const recentPurchases = (data.recentPurchases || []).map((p: any) => ({
         buyer: p.wallet_address || p.buyer || 'Unknown',
@@ -123,6 +80,11 @@ export default function AdminDashboard() {
       })
     } catch (error: any) {
       console.error('Database stats error:', error)
+      setStats(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Failed to load purchase data',
+      }))
       setDbStats(prev => ({
         ...prev,
         loading: false,
