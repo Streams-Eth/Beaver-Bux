@@ -46,42 +46,45 @@ export default function AdminDashboard() {
       const provider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org')
       
       const presaleABI = [
-        'function ethRaised() view returns (uint256)',
-        'function tokensSold() view returns (uint256)',
-        'function contributorCount() view returns (uint256)',
-        'event TokensPurchased(address indexed buyer, uint256 ethAmount, uint256 tokenAmount)',
+        'function totalSold() view returns (uint256)',
+        'function contributions(address) view returns (uint256)',
+        'event TokensPurchased(address indexed buyer, uint256 ethAmount, uint256 tokensSent)',
       ]
       
       const presale = new ethers.Contract(PRESALE_ADDRESS, presaleABI, provider)
       
-      // Get totals
-      const [ethRaised, tokensSold, contributorCount] = await Promise.all([
-        presale.ethRaised().catch(() => ethers.BigNumber.from(0)),
-        presale.tokensSold().catch(() => ethers.BigNumber.from(0)),
-        presale.contributorCount().catch(() => 0),
-      ])
+      // Get total BBUX sold
+      const tokensSold = await presale.totalSold().catch(() => ethers.BigNumber.from(0))
+      
+      // Calculate ETH raised and contributors from events
+      const filter = presale.filters.TokensPurchased()
+      const currentBlock = await provider.getBlockNumber()
+      const allEvents = await presale.queryFilter(filter, 0, 'latest').catch(() => [])
+      
+      let ethRaised = ethers.BigNumber.from(0)
+      const uniqueBuyers = new Set<string>()
+      
+      allEvents.forEach((event: any) => {
+        if (event.args) {
+          ethRaised = ethRaised.add(event.args.ethAmount || 0)
+          uniqueBuyers.add(event.args.buyer?.toLowerCase())
+        }
+      })
+      
+      const contributorCount = uniqueBuyers.size
       
       // Get recent purchases (last 10 events)
-      let recentPurchases: any[] = []
-      try {
-        const filter = presale.filters.TokensPurchased()
-        const currentBlock = await provider.getBlockNumber()
-        const events = await presale.queryFilter(filter, currentBlock - 10000, 'latest')
-        
-        recentPurchases = await Promise.all(
-          events.slice(-10).reverse().map(async (event) => {
-            const block = await provider.getBlock(event.blockNumber)
-            return {
-              buyer: event.args?.buyer || '',
-              amount: ethers.utils.formatEther(event.args?.ethAmount || 0),
-              tokens: ethers.utils.formatEther(event.args?.tokenAmount || 0),
-              timestamp: new Date(block.timestamp * 1000).toLocaleString(),
-            }
-          })
-        )
-      } catch (e) {
-        console.log('Could not fetch events:', e)
-      }
+      const recentPurchases = await Promise.all(
+        allEvents.slice(-10).reverse().map(async (event: any) => {
+          const block = await provider.getBlock(event.blockNumber)
+          return {
+            buyer: event.args?.buyer || '',
+            amount: ethers.utils.formatEther(event.args?.ethAmount || 0),
+            tokens: ethers.utils.formatEther(event.args?.tokensSent || 0),
+            timestamp: new Date(block.timestamp * 1000).toLocaleString(),
+          }
+        })
+      )
       
       setStats({
         ethRaised: ethers.utils.formatEther(ethRaised),
