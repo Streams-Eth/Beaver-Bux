@@ -50,25 +50,34 @@ export default function AdminDashboard() {
         tokensSold: data.tokensSold,
         contributorCount: data.contributorCount,
         recentPurchasesCount: data.recentPurchases?.length || 0,
-        recentPurchases: data.recentPurchases,
         error: data.error,
-        fullResponse: data,
       })
       
-      setStats({
-        ethRaised: data.ethRaised || '0',
-        tokensSold: data.tokensSold || '0',
-        contributorCount: data.contributorCount || 0,
-        recentPurchases: data.recentPurchases || [],
-        loading: false,
-        error: data.error || null,
-      })
+      // Only update if we got valid data (not an error)
+      if (data.ethRaised && data.ethRaised !== '0') {
+        setStats({
+          ethRaised: data.ethRaised || '0',
+          tokensSold: data.tokensSold || '0',
+          contributorCount: data.contributorCount || 0,
+          recentPurchases: data.recentPurchases || [],
+          loading: false,
+          error: null,
+        })
+      } else if (data.error) {
+        console.warn('Contract stats failed:', data.error)
+        setStats(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Contract API unavailable - using database data',
+        }))
+        // Continue to load database stats as fallback
+      }
     } catch (error: any) {
       console.error('Contract stats error:', error)
       setStats(prev => ({
         ...prev,
         loading: false,
-        error: error.message || 'Failed to load contract stats',
+        error: 'Failed to load contract stats - using database data',
       }))
     }
   }
@@ -76,18 +85,48 @@ export default function AdminDashboard() {
   const loadDatabaseStats = async () => {
     try {
       const response = await fetch('/api/admin/stats')
-      if (response.ok) {
-        const data = await response.json()
-        setDbStats({
-          totalPurchases: data.totalPurchases || 0,
-          totalETH: data.totalETH || '0',
-          totalBBUX: data.totalBBUX || '0',
-          loading: false,
-        })
-      }
-    } catch (error) {
+      const data = await response.json()
+      
+      console.log('Database stats response:', {
+        status: response.status,
+        totalETH: data.totalETH,
+        totalBBUX: data.totalBBUX,
+        totalPurchases: data.totalPurchases,
+        recentPurchasesCount: data.recentPurchases?.length || 0,
+        fullResponse: data,
+      })
+      
+      // Use database stats as the source of truth since BaseScan API is down
+      // Map database response to match stats interface
+      const recentPurchases = (data.recentPurchases || []).map((p: any) => ({
+        buyer: p.wallet_address || p.buyer || 'Unknown',
+        amount: p.eth_amount || '0',
+        tokens: p.bbux_amount || 'From Contract',
+        timestamp: p.created_at ? new Date(p.created_at).toLocaleString() : 'N/A',
+      }))
+      
+      // Update main stats with database data
+      setStats({
+        ethRaised: data.totalETH || '0',
+        tokensSold: data.totalBBUX || '0',
+        contributorCount: data.totalPurchases || 0,
+        recentPurchases: recentPurchases,
+        loading: false,
+        error: null,
+      })
+      
+      setDbStats({
+        totalPurchases: data.totalPurchases || 0,
+        totalETH: data.totalETH || '0',
+        totalBBUX: data.totalBBUX || '0',
+        loading: false,
+      })
+    } catch (error: any) {
       console.error('Database stats error:', error)
-      setDbStats(prev => ({ ...prev, loading: false }))
+      setDbStats(prev => ({
+        ...prev,
+        loading: false,
+      }))
     }
   }
 
