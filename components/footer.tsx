@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Script from "next/script"
 import { Twitter, Youtube } from "lucide-react"
 
 export function Footer() {
@@ -60,10 +61,15 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-background/70 hover:text-background transition-colors">
+                <a href="https://www.freshcoins.io/audit/beaver-bux" className="text-background/70 hover:text-background transition-colors">
                   Audit Report
                 </a>
               </li>
+                <li>
+                <a href="https://github.com/freshcoins/KYC/blob/main/BeaverBux_KYC.pdf" className="text-background/70 hover:text-background transition-colors">
+                  KYC
+                </a>
+                </li>
               <li>
                 <a href="/blog" className="text-background/70 hover:text-background transition-colors">
                   Blog
@@ -122,6 +128,10 @@ export function Footer() {
               </a>
             </div>
             <p className="text-sm text-background/70 mt-4">Join our community of over 10,000 members!</p>
+            <div className="mt-4">
+              <Script src="https://www.freshcoins.io/widget.js" strategy="lazyOnload" />
+              <div id="fcn-widget" data-slug="beaver-bux" data-market="false" data-style="light"></div>
+            </div>
           </div>
         </div>
 
