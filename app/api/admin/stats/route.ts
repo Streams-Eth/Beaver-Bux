@@ -34,6 +34,11 @@ export async function GET() {
     const totalETH = purchases?.reduce((sum, p) => sum + parseFloat(p.eth_amount || '0'), 0) || 0
     const totalBBUX = purchases?.reduce((sum, p) => sum + parseFloat(p.bbux_amount || '0'), 0) || 0
     
+    // Debug logging
+    console.log('[Stats API] Purchases:', purchases)
+    console.log('[Stats API] BBUX values:', purchases?.map(p => ({ tx: p.tx_hash?.slice(0, 10), bbux: p.bbux_amount, parsed: parseFloat(p.bbux_amount || '0') })))
+    console.log('[Stats API] Total BBUX calculated:', totalBBUX)
+    
     // Count unique contributors (distinct wallet addresses)
     const uniqueContributors = new Set(purchases?.map(p => p.wallet_address?.toLowerCase()) || []).size
 
