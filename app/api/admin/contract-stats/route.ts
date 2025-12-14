@@ -68,16 +68,35 @@ export async function GET() {
     const eventTopic = '0x8ff8b5f0a21b3cf82f37d61f85be04bf6a7ed36aacc79c0c9ea4ccd0cffce6fc'
     
     console.log(`[Dashboard] Fetching logs for topic ${eventTopic}`)
-    const logs = await jsonRpcCall(rpcUrl, 'eth_getLogs', [
-      {
-        address: PRESALE_ADDRESS,
-        topics: [eventTopic],
-        fromBlock: '0x' + startBlock.toString(16),
-        toBlock: 'latest',
-      },
-    ])
     
-    console.log(`[Dashboard] Found ${logs?.length || 0} TokensPurchased events`)
+    let logs: any[] = []
+    let logsRpc = ''
+    
+    // Try to fetch logs from available RPC endpoints (some have block range limits)
+    for (const testRpc of rpcUrls) {
+      try {
+        console.log(`[Dashboard] Trying eth_getLogs on ${testRpc}`)
+        logs = await jsonRpcCall(testRpc, 'eth_getLogs', [
+          {
+            address: PRESALE_ADDRESS,
+            topics: [eventTopic],
+            fromBlock: '0x' + startBlock.toString(16),
+            toBlock: 'latest',
+          },
+        ])
+        logsRpc = testRpc
+        console.log(`[Dashboard] Successfully fetched ${logs?.length || 0} logs from ${testRpc}`)
+        break
+      } catch (e: any) {
+        console.log(`[Dashboard] eth_getLogs failed on ${testRpc}: ${e.message}`)
+        continue
+      }
+    }
+    
+    if (!Array.isArray(logs)) {
+      console.log('[Dashboard] No logs found from any RPC')
+      logs = []
+    }
     
     let ethRaised = 0n
     let tokensSold = 0n
