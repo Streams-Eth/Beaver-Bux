@@ -618,10 +618,26 @@ export function PresaleWidget() {
                           console.log('Supabase tracking failed (non-critical):', e)
                         }
                       } catch (e: any) {
-                        const msg = e?.message || String(e)
-                        addLog(`buy failed: ${msg}`)
+                        let errorMsg = e?.message || String(e)
+                        
+                        // Parse revert reason
+                        if (errorMsg.includes('execution reverted')) {
+                          if (errorMsg.includes('Stage')) {
+                            errorMsg = '❌ Current stage allocation is full. Check back for next stage!'
+                          } else if (errorMsg.includes('contribution')) {
+                            errorMsg = '❌ You\'ve reached the maximum contribution limit for this wallet'
+                          } else if (errorMsg.includes('minimum')) {
+                            errorMsg = '❌ Contribution is below minimum (0.0005 ETH)'
+                          } else if (errorMsg.includes('paused')) {
+                            errorMsg = '❌ Presale is temporarily paused'
+                          } else {
+                            errorMsg = `⚠️ Contract rejected the transaction: ${errorMsg}`
+                          }
+                        }
+                        
+                        addLog(`buy failed: ${errorMsg}`)
                         console.error('Buy error', e)
-                        alert(`Transaction failed: ${msg}`)
+                        alert(`Transaction failed:\n\n${errorMsg}\n\nIf the issue persists, please contact: hello@beaverbux.ca`)
                       }
                     }}
                   >
