@@ -63,6 +63,8 @@ export function HeroSection() {
             alt="Beaver Bux Bank - Woodland Creatures with BBUX Coins"
             width={1200}
             height={600}
+            sizes="(max-width: 1024px) 100vw, 1200px"
+            priority
             className="w-full h-auto"
           />
         </div>

@@ -9,13 +9,39 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com',
+      },
+    ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['thread-stream'],
-  },
+  serverExternalPackages: ['thread-stream'],
   // Empty turbopack config to allow webpack config to coexist in Next.js 16
   turbopack: {},
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, immutable, max-age=31536000' },
+        ],
+      },
+      {
+        source: '/_next/image/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, stale-while-revalidate=86400' },
+        ],
+      },
+      {
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
+  },
   webpack(config) {
     // Force a single resolved copy of @tanstack/react-query to avoid
     // runtime mismatches between QueryClient and QueryClientProvider.

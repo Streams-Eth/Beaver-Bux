@@ -12,6 +12,36 @@ export const metadata: Metadata = {
   description:
     "Join the Beaver Bux revolution - Canada's premier meme cryptocurrency. Invest in the North's future today!",
   generator: "v0.app",
+  alternates: {
+    canonical: "https://beaverbux.io/",
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    title: "Beaver Bux | The Official Canadian Meme Coin",
+    description:
+      "Join the Beaver Bux revolution - Canada's premier meme cryptocurrency. Invest in the North's future today!",
+    url: "https://beaverbux.io/",
+    siteName: "Beaver Bux",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bbuxbank-VOUNgxqX5pxf8wkmDJCNJGoxPDQFyA.png",
+        width: 1200,
+        height: 630,
+        alt: "Beaver Bux Bank - Woodland Creatures with BBUX Coins",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Beaver Bux | The Official Canadian Meme Coin",
+    description:
+      "Join the Beaver Bux revolution - Canada's premier meme cryptocurrency. Invest in the North's future today!",
+    images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bbuxbank-VOUNgxqX5pxf8wkmDJCNJGoxPDQFyA.png"],
+  },
 }
 
 export default function RootLayout({
@@ -19,10 +49,33 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Beaver Bux",
+    url: "https://beaverbux.io/",
+    logo: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-PWoLbePYdidboO5s67YqD1BhEvhSCH.png",
+    sameAs: [
+      "https://x.com/beaver_bux",
+      "https://www.facebook.com/profile.php?id=61577355935290",
+      "https://www.youtube.com/@BeaverBux",
+      "https://discord.gg/dGSYrPV552",
+      "https://t.me/BeaverBux",
+    ],
+  }
+
   try {
     return (
       <html lang="en">
         <head>
+          <link
+            rel="preconnect"
+            href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com"
+            crossOrigin="anonymous"
+          />
+          <link rel="icon" href="/favicon.ico" />
+          <link rel="canonical" href="https://beaverbux.io/" />
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
           <script
             src="https://www.paypal.com/sdk/js?client-id=AS6HlfoJXWFF-xqbhTeLn84IyegiYZwt9jQwfcwpdtaM0xbn2fIliPkGZWDsTjcrRYgbNWS3dUz-emhx&currency=CAD"
             async
