@@ -22,7 +22,7 @@ export function HowToBuySection() {
       title: "Claim Your BBUX",
       description:
         "After the presale ends, return to this site and claim your BBUX tokens. You can also claim airdrop rewards if eligible!",
-      color: "bg-accent/10 text-accent",
+      color: "bg-accent text-accent-foreground shadow-sm",
     },
   ]
 
@@ -62,7 +62,7 @@ export function HowToBuySection() {
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
             Need help? Join our
               <a
-                href="https://t.me/BeaverBux"
+                href="https://t.me/Beaver_Bux_Community"
                 className="text-primary hover:underline font-semibold inline-flex items-center gap-1"
                 aria-label="Join the Beaver Bux Telegram community"
               >

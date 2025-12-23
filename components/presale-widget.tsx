@@ -293,7 +293,7 @@ export function PresaleWidget() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold text-foreground">{countdown}</CardTitle>
           <div className="flex gap-2">
-            <div className="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm font-semibold">
+            <div className="bg-accent text-accent-foreground px-3 py-1 rounded-full text-sm font-semibold shadow-sm">
               Stage {currentStage.id}
             </div>
             <div className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1" title={`Contract: ${PRESALE_CONTRACT}`}>

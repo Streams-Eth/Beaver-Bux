@@ -76,7 +76,7 @@ export function TokenomicsSection() {
 
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-6 space-y-3">
-                <h4 className="text-xl font-bold text-foreground">Distribution Breakdown</h4>
+                <h3 className="text-xl font-bold text-foreground">Distribution Breakdown</h3>
                 <ul className="space-y-2 text-muted-foreground text-sm">
                   <li className="flex items-start gap-2">
                     <span className="text-primary mt-1">•</span>
