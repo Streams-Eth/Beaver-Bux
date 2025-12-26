@@ -24,7 +24,7 @@ export function HeroSection() {
             </p>
 
             <p className="text-lg text-muted-foreground max-w-xl text-pretty">
-              Join the revolution! Beaver Bux is Canada's premier meme cryptocurrency, bringing the spirit of the Great
+              Join the revolution! Beaver Bux is Canada&apos;s premier meme cryptocurrency, bringing the spirit of the Great
               White North to the blockchain. Eh, what are you waiting for?
             </p>
 

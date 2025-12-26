@@ -32,7 +32,7 @@ export function HowToBuySection() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">How to Buy BBUX</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Get started in three simple steps. It's easier than ordering poutine!
+            Get started in three simple steps. It&apos;s easier than ordering poutine!
           </p>
         </div>
 
@@ -62,7 +62,7 @@ export function HowToBuySection() {
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
             Need help? Join our
               <a
-                href="https://t.me/Beaver_Bux_Community"
+                href="https://t.me/BeaverBuxChannel"
                 className="text-primary hover:underline font-semibold inline-flex items-center gap-1"
                 aria-label="Join the Beaver Bux Telegram community"
               >

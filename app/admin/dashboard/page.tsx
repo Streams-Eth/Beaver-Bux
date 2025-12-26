@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Stats {
@@ -34,11 +34,7 @@ export default function AdminDashboard() {
     loading: true,
   })
 
-  useEffect(() => {
-    loadDatabaseStats()
-  }, [])
-
-  const loadDatabaseStats = async () => {
+  const loadDatabaseStats = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/stats')
       const data = await response.json()
@@ -90,7 +86,14 @@ export default function AdminDashboard() {
         loading: false,
       }))
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      void loadDatabaseStats()
+    }, 0)
+    return () => clearTimeout(timeout)
+  }, [loadDatabaseStats])
 
   const exportToCSV = () => {
     try {

@@ -13,7 +13,6 @@ export function normalizeAddress(addr?: string | null): string | null {
   try {
     // dynamic import to avoid forcing ethers into server bundles
     // (this function runs on client code paths before storing addresses)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { utils } = require('ethers')
     return utils.getAddress(String(addr))
   } catch (e) {

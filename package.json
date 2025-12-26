@@ -5,7 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "next lint",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings=0",
     "start": "next start"
   },
   "dependencies": {
@@ -71,6 +71,7 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "baseline-browser-mapping": "^2.9.11",
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.1",
     "pino-pretty": "^13.1.2",

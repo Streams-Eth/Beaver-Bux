@@ -1,5 +1,4 @@
 import Image from "next/image"
-import Script from "next/script"
 import { Twitter, Youtube } from "lucide-react"
 
 export function Footer() {
@@ -129,9 +128,23 @@ export function Footer() {
               </a>
             </div>
             <p className="text-sm text-background/80 mt-4">Join our community of over 10,000 members!</p>
-            <div className="mt-4">
-              <Script src="https://www.freshcoins.io/widget.js" strategy="lazyOnload" />
-              <div id="fcn-widget" data-slug="beaver-bux" data-market="false" data-style="light"></div>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm text-background/80">
+              <a
+                href="https://t.me/BeaverBuxChannel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-background transition-colors"
+              >
+                Telegram Channel
+              </a>
+              <a
+                href="https://t.me/BBUX_Chat"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-background transition-colors"
+              >
+                Telegram Chat
+              </a>
             </div>
           </div>
         </div>

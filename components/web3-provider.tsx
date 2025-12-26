@@ -320,7 +320,7 @@ export function Web3Provider({ children, queryClient: passedQueryClient }: { chi
       }
     })()
     return () => { mounted = false }
-  }, [impl])
+  }, [impl, passedQueryClient])
 
   // While wagmi is still being dynamically imported, keep a minimal loading
   // placeholder so server/client hydration remains stable. Once the import

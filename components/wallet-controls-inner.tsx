@@ -27,7 +27,6 @@ export default function WalletControlsInner(props: any) {
         return false
       }
     }
-    if (check()) setReady(true)
     const i = setInterval(() => {
       if (check()) {
         setReady(true)

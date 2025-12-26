@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { normalizeAddress } from "@/lib/utils"
 import { Menu, X } from "lucide-react"
@@ -93,18 +94,18 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="/#about" className="text-foreground hover:text-primary transition-colors">
+            <Link href="/#about" className="text-foreground hover:text-primary transition-colors">
               About
-            </a>
-            <a href="/#how-to-buy" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link href="/#how-to-buy" className="text-foreground hover:text-primary transition-colors">
               How to Buy
-            </a>
-            <a href="/tokenomics" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link href="/tokenomics" className="text-foreground hover:text-primary transition-colors">
               Tokenomics
-            </a>
-            <a href="#roadmap" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link href="/#roadmap" className="text-foreground hover:text-primary transition-colors">
               Roadmap
-            </a>
+            </Link>
             {!walletAddress ? (
               <Button 
                 onClick={connectWallet}
@@ -135,34 +136,34 @@ export function Header() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav id="mobile-nav" className="md:hidden mt-4 pb-4 flex flex-col gap-4" aria-label="Mobile navigation">
-            <a
+            <Link
               href="/#about"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               About
-            </a>
-            <a
+            </Link>
+            <Link
               href="/#how-to-buy"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               How to Buy
-            </a>
-            <a
+            </Link>
+            <Link
               href="/tokenomics"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Tokenomics
-            </a>
-            <a
-              href="#roadmap"
+            </Link>
+            <Link
+              href="/#roadmap"
               className="text-foreground hover:text-primary transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Roadmap
-            </a>
+            </Link>
             {!walletAddress ? (
               <Button 
                 onClick={connectWallet}

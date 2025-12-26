@@ -19,7 +19,7 @@ export function AboutSection() {
             <h3 className="text-3xl font-bold text-foreground text-balance">Why Beaver Bux?</h3>
             <p className="text-lg text-muted-foreground text-pretty">
               At the heart of the ecosystem lies $BBUX, the utility token fueling every corner of the Beaver Bux
-              network. You're still early—just in time to witness the rise of a new golden era of meme coins, with the
+              network. You&apos;re still early—just in time to witness the rise of a new golden era of meme coins, with the
               Beaver reigning supreme as king and Beaver Bux as the unstoppable force.
             </p>
             <p className="text-lg text-muted-foreground text-pretty">

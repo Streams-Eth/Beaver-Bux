@@ -1,9 +1,8 @@
 export default function TermsPage() {
-  try {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-16 max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-8">Terms and Conditions</h1>
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-16 max-w-4xl">
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-8">Terms and Conditions</h1>
 
           <div className="prose prose-lg max-w-none space-y-8 text-foreground/80">
           {/* Introduction */}
@@ -218,22 +217,7 @@ export default function TermsPage() {
             </p>
           </section>
           </div>
-        </div>
       </div>
-    )
-  } catch (e) {
-    // Defensive fallback for CI/static prerender environments where
-    // a runtime error (e.g. indexing into undefined) might occur.
-    // Returning a safe placeholder prevents the entire build from failing
-    // and gives a clearer message in the generated HTML.
-    console.error('TermsPage render error:', e)
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-16 max-w-4xl">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-8">Terms and Conditions</h1>
-          <div className="p-6 bg-muted rounded">Terms content is unavailable at the moment. Please try again later.</div>
-        </div>
-      </div>
-    )
-  }
+    </div>
+  )
 }

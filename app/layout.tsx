@@ -64,48 +64,28 @@ export default function RootLayout({
     ],
   }
 
-  try {
-    return (
-      <html lang="en">
-        <head>
-          <link
-            rel="preconnect"
-            href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com"
-            crossOrigin="anonymous"
-          />
-          <link rel="icon" href="/favicon.ico" />
-          <link rel="canonical" href="https://beaverbux.io/" />
-          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-          <script
-            src="https://www.paypal.com/sdk/js?client-id=AS6HlfoJXWFF-xqbhTeLn84IyegiYZwt9jQwfcwpdtaM0xbn2fIliPkGZWDsTjcrRYgbNWS3dUz-emhx&currency=CAD"
-            async
-          />
-        </head>
-        <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-          <Suspense fallback={null}>
-            <Providers>{children}</Providers>
-          </Suspense>
-          <Analytics />
-        </body>
-      </html>
-    )
-  } catch (e) {
-    // Defensive fallback for prerender/build environments. If an unexpected
-    // runtime error occurs while rendering the root layout (which would
-    // otherwise fail the build during prerender), return a minimal HTML
-    // shell so the build can continue and surface the underlying error in
-    // logs instead of aborting the whole process.
-    console.error('RootLayout render error:', e)
-    return (
-      <html lang="en">
-        <head />
-        <body>
-          <div style={{ padding: 32 }}>
-            <h1>Beaver Bux</h1>
-            <p>Site is temporarily unavailable during build. Check logs for details.</p>
-          </div>
-        </body>
-      </html>
-    )
-  }
+  return (
+    <html lang="en">
+      <head>
+        <link
+          rel="preconnect"
+          href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="canonical" href="https://beaverbux.io/" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script
+          src="https://www.paypal.com/sdk/js?client-id=AS6HlfoJXWFF-xqbhTeLn84IyegiYZwt9jQwfcwpdtaM0xbn2fIliPkGZWDsTjcrRYgbNWS3dUz-emhx&currency=CAD"
+          async
+        />
+      </head>
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+        <Suspense fallback={null}>
+          <Providers>{children}</Providers>
+        </Suspense>
+        <Analytics />
+      </body>
+    </html>
+  )
 }

@@ -35,7 +35,7 @@ export function RoadmapSection() {
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">Roadmap</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Our journey to becoming Canada's #1 meme coin
+            Our journey to becoming Canada&apos;s #1 meme coin
           </p>
         </div>
 
