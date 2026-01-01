@@ -39,7 +39,7 @@ export function HeroSection() {
 
             <div className="flex items-center gap-6 pt-4">
               <div>
-                <div className="text-3xl font-bold text-foreground">0.0005</div>
+                <div className="text-3xl font-bold text-foreground">$0.004830 CAD</div>
                 <div className="text-sm text-muted-foreground">Current Price</div>
               </div>
               <div className="h-12 w-px bg-border" />

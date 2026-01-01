@@ -151,7 +151,7 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-background/20 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-background/70">© 2025 Beaver Bux. All rights reserved.</p>
+          <p className="text-sm text-background/70">© 2026 Beaver Bux. All rights reserved.</p>
           <div className="flex gap-6 text-sm">
             <a href="#" className="text-background/80 hover:text-background transition-colors">
               Privacy Policy

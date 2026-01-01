@@ -303,7 +303,7 @@ export function PresaleWidget() {
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          Next Stage Price:{" "}
+           1 BBUX Price:{" "}
           <span className="font-semibold text-foreground">
             ${(nextStage.pricePerToken * ETH_TO_CAD).toFixed(6)} CAD
           </span>
