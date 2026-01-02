@@ -9,14 +9,45 @@ export async function GET() {
 
     if (supabaseUrl && supabaseKey) {
       const supabase = createClient(supabaseUrl, supabaseKey)
-      const { data, error } = await supabase.from('payments').select('*').order('received_at', { ascending: false }).limit(200)
-      if (error) {
-        console.error('Supabase fetch error', error)
-        return new Response(JSON.stringify({ ok: false, error: String(error) }), { status: 500 })
+      // Try the primary payments table first (PayPal flow)
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .order('received_at', { ascending: false })
+        .limit(200)
+
+      if (!error) {
+        return new Response(JSON.stringify({ ok: true, payments: data }), { status: 200 })
       }
 
-      // Return payments; let client filter delivered status
-      return new Response(JSON.stringify({ ok: true, payments: data }), { status: 200 })
+      const errMsg = String(error?.message || error)
+      console.warn('Supabase payments table unavailable, attempting presale_purchases fallback:', errMsg)
+
+      // Fallback to presale_purchases (on-chain tracked purchases) so the admin UI still shows data
+      const { data: purchases, error: fallbackError } = await supabase
+        .from('presale_purchases')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200)
+
+      if (fallbackError) {
+        console.error('Supabase fallback fetch error', fallbackError)
+        return new Response(JSON.stringify({ ok: false, error: errMsg, fallbackError: String(fallbackError?.message || fallbackError) }), { status: 200 })
+      }
+
+      const mapped = (purchases || []).map((p: any) => ({
+        transaction_id: p.tx_hash,
+        buyer_name: p.wallet_address,
+        buyer_email: undefined,
+        tokens: p.bbux_amount ? Number(p.bbux_amount) : undefined,
+        gross_cad: undefined,
+        paypal_fee_cad: undefined,
+        net_cad: undefined,
+        delivered: false,
+        delivery_tx_hash: undefined,
+      }))
+
+      return new Response(JSON.stringify({ ok: true, payments: mapped, note: 'Using presale_purchases fallback' }), { status: 200 })
     }
 
     // fallback: read local payments.json

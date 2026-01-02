@@ -308,6 +308,9 @@ export function PresaleWidget() {
             ${(nextStage.pricePerToken * ETH_TO_CAD).toFixed(6)} CAD
           </span>
         </div>
+        <div className="text-xs text-muted-foreground">
+          Tokens purchased in Stage 1 will be claimable starting March 31, 2026.
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-6">

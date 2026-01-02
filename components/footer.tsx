@@ -75,7 +75,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#" className="text-background/80 hover:text-background transition-colors">
+                <a href="/faq" className="text-background/80 hover:text-background transition-colors">
                   FAQ
                 </a>
               </li>
